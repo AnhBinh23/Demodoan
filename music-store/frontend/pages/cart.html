@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Giỏ hàng — MusicStore</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<div class="section" style="padding-top:2rem">
+  <h2 class="section-title" style="margin-bottom:1.5rem">Giỏ <span>hàng</span></h2>
+
+  <div id="cartContent">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<div id="footer-placeholder"></div>
+<div id="toast-container"></div>
+
+<script src="../js/api.js"></script>
+<script src="../js/main.js"></script>
+<script>
+  renderHeader('');
+  renderFooter();
+
+  if (!Auth.isLoggedIn()) {
+    window.location.href = 'login.html?redirect=' + encodeURIComponent(location.href);
+  }
+
+  let cartItems = [];
+
+  async function loadCart() {
+    const content = document.getElementById('cartContent');
+    try {
+      cartItems = await Cart.get();
+
+      if (!cartItems.length) {
+        content.innerHTML = `
+        <div class="empty-state" style="padding:5rem 2rem">
+          <div class="icon">🛒</div>
+          <h3>Giỏ hàng trống</h3>
+          <p>Hãy thêm sản phẩm vào giỏ hàng của bạn</p>
+          <a href="products.html" class="btn btn-primary" style="margin-top:1.5rem">Mua sắm ngay</a>
+        </div>`;
+        return;
+      }
+
+      const total = cartItems.reduce((sum, item) => {
+        const price = item.price * (1 - (item.discount||0) / 100);
+        return sum + price * item.quantity;
+      }, 0);
+
+      content.innerHTML = `
+      <div class="cart-layout">
+        <!-- DANH SÁCH -->
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <span style="font-size:0.88rem;color:var(--muted)">${cartItems.length} sản phẩm</span>
+            <button class="btn btn-outline btn-sm" onclick="clearCart()" style="border-color:var(--red);color:var(--red)">Xóa tất cả</button>
+          </div>
+          <div id="cartList">${renderCartItems()}</div>
+        </div>
+
+        <!-- TỔNG TIỀN -->
+        <div class="order-summary">
+          <h3>Tóm tắt đơn hàng</h3>
+          <div class="summary-row">
+            <span class="label">Tạm tính</span>
+            <span>${formatPrice(total)}</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">Phí vận chuyển</span>
+            <span style="color:var(--green)">Miễn phí</span>
+          </div>
+          <div class="summary-row summary-total">
+            <span class="label">Tổng cộng</span>
+            <span class="value">${formatPrice(total)}</span>
+          </div>
+          <button class="btn btn-primary btn-block" style="margin-top:1.2rem" onclick="window.location.href='checkout.html'">
+            Tiến hành đặt hàng →
+          </button>
+          <a href="products.html" class="btn btn-outline btn-block" style="margin-top:0.6rem">
+            Tiếp tục mua sắm
+          </a>
+        </div>
+      </div>`;
+    } catch(e) {
+      content.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>${e.message}</p></div>`;
+    }
+  }
+
+  function renderCartItems() {
+    return cartItems.map(item => {
+      const price = item.price * (1 - (item.discount||0) / 100);
+      return `
+      <div class="cart-item" id="item-${item.cart_id}">
+        <div class="cart-item-img">
+          ${item.image_url
+            ? `<img src="${item.image_url}" alt="${item.product_name}" onerror="this.parentElement.innerHTML='🎵'"/>`
+            : '🎵'}
+        </div>
+        <div class="cart-item-info">
+          <div class="cart-item-name">${item.product_name}</div>
+          <div class="cart-item-brand">Tồn kho: ${item.stock}</div>
+          <div class="cart-item-price">${formatPrice(price)}</div>
+        </div>
+        <div class="cart-item-actions">
+          <div class="qty-selector">
+            <button class="qty-btn" onclick="updateQty(${item.cart_id}, ${item.quantity - 1}, ${item.stock})">−</button>
+            <input type="number" class="qty-input" value="${item.quantity}" min="1" max="${item.stock}"
+              onchange="updateQty(${item.cart_id}, parseInt(this.value), ${item.stock})"/>
+            <button class="qty-btn" onclick="updateQty(${item.cart_id}, ${item.quantity + 1}, ${item.stock})">+</button>
+          </div>
+          <div style="font-weight:600;color:var(--gold);min-width:100px;text-align:right">
+            ${formatPrice(price * item.quantity)}
+          </div>
+          <button class="remove-btn" onclick="removeItem(${item.cart_id})">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function updateQty(cartId, newQty, stock) {
+    if (newQty < 1) { removeItem(cartId); return; }
+    if (newQty > stock) { showToast('Không đủ hàng trong kho!', 'error'); return; }
+    try {
+      await Cart.update(cartId, newQty);
+      await loadCart();
+      updateCartBadge();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  async function removeItem(cartId) {
+    try {
+      await Cart.remove(cartId);
+      showToast('Đã xóa sản phẩm!', 'info');
+      await loadCart();
+      updateCartBadge();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  async function clearCart() {
+    if (!confirm('Xóa tất cả sản phẩm trong giỏ hàng?')) return;
+    try {
+      await Promise.all(cartItems.map(item => Cart.remove(item.cart_id)));
+      showToast('Đã xóa giỏ hàng!', 'info');
+      await loadCart();
+      updateCartBadge();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  loadCart();
+</script>
+</body>
+</html>

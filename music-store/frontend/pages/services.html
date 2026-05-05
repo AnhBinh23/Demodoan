@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dịch vụ — Ascent-Music</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <style>
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1.5rem;
+    }
+    .service-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+    .service-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--gold);
+      opacity: 0;
+      transition: var(--transition);
+    }
+    .service-card:hover { border-color: rgba(201,168,76,0.4); transform: translateY(-4px); box-shadow: var(--shadow); }
+    .service-card:hover::before { opacity: 1; }
+    .service-icon {
+      width: 60px; height: 60px;
+      border-radius: var(--radius-lg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; margin-bottom: 1.2rem;
+    }
+    .service-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem; font-weight: 700;
+      margin-bottom: 0.5rem; color: var(--cream);
+    }
+    .service-desc {
+      font-size: 0.88rem; color: var(--muted);
+      line-height: 1.6; margin-bottom: 1.2rem;
+    }
+    .service-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    .service-list li {
+      display: flex; align-items: flex-start; gap: 0.6rem;
+      font-size: 0.88rem; color: var(--muted);
+    }
+    .service-list li::before {
+      content: '✓';
+      color: var(--gold); font-weight: 700;
+      flex-shrink: 0; margin-top: 0.05rem;
+    }
+
+    /* HERO */
+    .services-hero {
+      background: linear-gradient(135deg, #0e0e10, #1a1408);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 3rem; text-align: center;
+      margin-bottom: 3rem;
+      position: relative; overflow: hidden;
+    }
+    .services-hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 60% 80% at 50% 50%, rgba(201,168,76,0.08) 0%, transparent 70%);
+    }
+    .services-hero > * { position: relative; z-index: 1; }
+
+    /* CTA */
+    .cta-box {
+      background: linear-gradient(135deg, #1a1408, #1e1a0e);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 3rem; text-align: center;
+      margin-top: 3rem;
+    }
+  </style>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<div class="section" style="padding-top:2rem">
+
+  <!-- HERO -->
+  <div class="services-hero">
+    <p style="font-size:0.8rem;color:var(--gold);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.8rem">Dịch vụ của chúng tôi</p>
+    <h1 style="font-family:'Playfair Display',serif;font-size:clamp(1.8rem,4vw,2.8rem);margin-bottom:1rem">
+      Hơn cả một cửa hàng nhạc cụ
+    </h1>
+    <p style="color:var(--muted);max-width:560px;margin:0 auto 1.5rem;font-size:0.95rem;line-height:1.7">
+      Ascent-Music cung cấp đầy đủ dịch vụ từ tư vấn, dạy học, giao hàng đến bảo hành — đồng hành cùng bạn trên hành trình âm nhạc.
+    </p>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+      <a href="contact.html" class="btn btn-primary">Liên hệ tư vấn</a>
+      <a href="products.html" class="btn btn-outline">Xem sản phẩm</a>
+    </div>
+  </div>
+
+  <!-- TIÊU ĐỀ -->
+  <div class="section-header" style="margin-bottom:2rem">
+    <div>
+      <h2 class="section-title">Các dịch vụ <span>nổi bật</span></h2>
+      <p class="section-sub">Tất cả những gì bạn cần cho hành trình âm nhạc</p>
+    </div>
+  </div>
+
+  <!-- SERVICES GRID -->
+  <div class="services-grid">
+
+    <!-- 1. DẠY HỌC NHẠC -->
+    <div class="service-card">
+      <div class="service-icon" style="background:rgba(201,168,76,0.1)">🎓</div>
+      <div class="service-title">Dạy học nhạc & Khóa học</div>
+      <p class="service-desc">Chương trình học bài bản từ cơ bản đến nâng cao, phù hợp mọi lứa tuổi và trình độ.</p>
+      <ul class="service-list">
+        <li>Dạy guitar cơ bản → nâng cao</li>
+        <li>Dạy piano, organ, ukulele, violin</li>
+        <li>Học online hoặc offline linh hoạt</li>
+        <li>Giáo viên có chuyên môn và kinh nghiệm</li>
+        <li>Cấp chứng chỉ sau khi hoàn thành khóa học</li>
+      </ul>
+      <a href="contact.html" class="btn btn-outline btn-sm" style="margin-top:1.2rem">Đăng ký học ngay</a>
+    </div>
+
+    <!-- 2. GIAO HÀNG & LẮP ĐẶT -->
+    <div class="service-card">
+      <div class="service-icon" style="background:rgba(76,175,128,0.1)">🚚</div>
+      <div class="service-title">Giao hàng & Lắp đặt</div>
+      <p class="service-desc">Dịch vụ giao hàng nhanh chóng, an toàn và hỗ trợ lắp đặt tận nơi trên toàn quốc.</p>
+      <ul class="service-list">
+        <li>Giao hàng tận nơi toàn quốc</li>
+        <li>Đóng gói cẩn thận, bảo vệ nhạc cụ</li>
+        <li>Hỗ trợ lắp đặt và setup thiết bị</li>
+        <li>Hướng dẫn sử dụng khi nhận đàn</li>
+        <li>Miễn phí giao hàng cho đơn trên 5 triệu</li>
+      </ul>
+      <a href="products.html" class="btn btn-outline btn-sm" style="margin-top:1.2rem">Mua hàng ngay</a>
+    </div>
+
+    <!-- 3. SỬA CHỮA & BẢO DƯỠNG -->
+    <div class="service-card">
+      <div class="service-icon" style="background:rgba(100,149,237,0.1)">🔧</div>
+      <div class="service-title">Sửa chữa & Bảo dưỡng</div>
+      <p class="service-desc">Đội ngũ kỹ thuật viên lành nghề, xử lý mọi vấn đề với nhạc cụ của bạn nhanh chóng.</p>
+      <ul class="service-list">
+        <li>Sửa chữa tất cả loại nhạc cụ</li>
+        <li>Lên dây, căn chỉnh âm chuẩn</li>
+        <li>Thay thế phụ kiện chính hãng</li>
+        <li>Vệ sinh và bảo dưỡng định kỳ</li>
+        <li>Báo giá minh bạch trước khi sửa</li>
+      </ul>
+      <a href="contact.html" class="btn btn-outline btn-sm" style="margin-top:1.2rem">Đặt lịch sửa chữa</a>
+    </div>
+
+    <!-- 4. BẢO HÀNH SẢN PHẨM -->
+    <div class="service-card">
+      <div class="service-icon" style="background:rgba(186,85,211,0.1)">🛡️</div>
+      <div class="service-title">Bảo hành sản phẩm</div>
+      <p class="service-desc">Chính sách bảo hành rõ ràng, minh bạch — mua hàng tại Ascent-Music để được bảo vệ toàn diện.</p>
+      <ul class="service-list">
+        <li>Bảo hành chính hãng theo nhà sản xuất</li>
+        <li>Đổi trả trong 30 ngày nếu lỗi nhà sản xuất</li>
+        <li>Hỗ trợ bảo hành tại cửa hàng hoặc tận nơi</li>
+        <li>Lưu trữ hồ sơ bảo hành điện tử</li>
+        <li>Ưu tiên xử lý nhanh cho khách VIP</li>
+      </ul>
+      <a href="contact.html" class="btn btn-outline btn-sm" style="margin-top:1.2rem">Kiểm tra bảo hành</a>
+    </div>
+
+    <!-- 5. TƯ VẤN CHỌN ĐÀN -->
+    <div class="service-card">
+      <div class="service-icon" style="background:rgba(255,165,0,0.1)">💬</div>
+      <div class="service-title">Tư vấn chọn đàn</div>
+      <p class="service-desc">Đội ngũ chuyên gia giàu kinh nghiệm sẵn sàng tư vấn giúp bạn chọn được nhạc cụ phù hợp nhất.</p>
+      <ul class="service-list">
+        <li>Tư vấn theo nhu cầu (mới học, biểu diễn, chuyên nghiệp)</li>
+        <li>So sánh các loại đàn cùng phân khúc</li>
+        <li>Tư vấn theo ngân sách cụ thể</li>
+        <li>Hỗ trợ qua điện thoại, Zalo, chat</li>
+        <li>Miễn phí tư vấn, không ép mua</li>
+      </ul>
+      <a href="contact.html" class="btn btn-outline btn-sm" style="margin-top:1.2rem">Nhận tư vấn miễn phí</a>
+    </div>
+
+    <!-- 6. CHO THUÊ NHẠC CỤ -->
+    <div class="service-card">
+      <div class="service-icon" style="background:rgba(224,85,85,0.1)">🎼</div>
+      <div class="service-title">Cho thuê nhạc cụ</div>
+      <p class="service-desc">Không muốn mua ngay? Hãy thử thuê nhạc cụ để trải nghiệm trước khi quyết định đầu tư.</p>
+      <ul class="service-list">
+        <li>Cho thuê theo ngày, tuần, tháng</li>
+        <li>Đa dạng loại nhạc cụ sẵn có</li>
+        <li>Nhạc cụ được vệ sinh, kiểm tra kỹ lưỡng</li>
+        <li>Phù hợp cho sự kiện, biểu diễn</li>
+        <li>Có thể mua lại với giá ưu đãi</li>
+      </ul>
+      <a href="contact.html" class="btn btn-outline btn-sm" style="margin-top:1.2rem">Xem giá thuê</a>
+    </div>
+
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-box">
+    <p style="font-size:0.8rem;color:var(--gold);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.8rem">Bắt đầu ngay hôm nay</p>
+    <h2 style="font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:0.8rem">
+      Bạn cần hỗ trợ dịch vụ nào?
+    </h2>
+    <p style="color:var(--muted);margin-bottom:1.5rem;font-size:0.92rem">
+      Liên hệ với chúng tôi ngay — đội ngũ Ascent-Music luôn sẵn sàng hỗ trợ bạn 24/7
+    </p>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+      <a href="contact.html" class="btn btn-primary">📞 Liên hệ ngay</a>
+      <a href="products.html" class="btn btn-outline">🎵 Xem sản phẩm</a>
+    </div>
+  </div>
+
+</div>
+
+<div id="footer-placeholder"></div>
+<div id="toast-container"></div>
+
+<script src="../js/api.js"></script>
+<script src="../js/main.js"></script>
+<script>
+  renderHeader('services');
+  renderFooter();
+</script>
+</body>
+</html>

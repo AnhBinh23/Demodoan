@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sản phẩm — MusicStore</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<div class="section" style="padding-top:2rem">
+  <!-- TIÊU ĐỀ -->
+  <div class="section-header">
+    <div>
+      <h2 class="section-title" id="pageTitle">Tất cả <span>sản phẩm</span></h2>
+      <p class="section-sub" id="pageSubtitle">Khám phá bộ sưu tập nhạc cụ chính hãng</p>
+    </div>
+  </div>
+
+  <!-- FILTER -->
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="setCategory('')"     id="cat-all">Tất cả</button>
+    <button class="filter-btn"        onclick="setCategory(1)"      id="cat-1">🎹 Piano</button>
+    <button class="filter-btn"        onclick="setCategory(2)"      id="cat-2">🎹 Organ</button>
+    <button class="filter-btn"        onclick="setCategory(3)"      id="cat-3">🎸 Guitar</button>
+    <button class="filter-btn"        onclick="setCategory(4)"      id="cat-4">🎻 Violin</button>
+    <select class="sort-select" onchange="setSort(this.value)">
+      <option value="newest">Mới nhất</option>
+      <option value="price_asc">Giá tăng dần</option>
+      <option value="price_desc">Giá giảm dần</option>
+    </select>
+  </div>
+
+  <!-- SEARCH RESULT -->
+  <div id="searchInfo" style="display:none;margin-bottom:1rem;font-size:0.9rem;color:var(--muted)"></div>
+
+  <!-- PRODUCTS GRID -->
+  <div class="products-grid" id="productsGrid">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+
+  <!-- PAGINATION -->
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<div id="footer-placeholder"></div>
+<div id="toast-container"></div>
+
+<script src="../js/api.js"></script>
+<script src="../js/main.js"></script>
+<script>
+  renderHeader('products');
+  renderFooter();
+
+  let currentPage = 1;
+  let currentCategory = '';
+  let currentSort = 'newest';
+  let currentSearch = '';
+
+  // Đọc params từ URL
+  const params = new URLSearchParams(location.search);
+  if (params.get('category_id')) currentCategory = params.get('category_id');
+  if (params.get('search'))      currentSearch   = params.get('search');
+
+  // Highlight filter button nếu có category
+  if (currentCategory) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`cat-${currentCategory}`)?.classList.add('active');
+  }
+
+  // Hiện thanh tìm kiếm nếu có từ khóa
+  if (currentSearch) {
+    document.getElementById('searchInput').value = currentSearch;
+    document.getElementById('searchInfo').style.display = 'block';
+    document.getElementById('searchInfo').innerHTML = `Kết quả tìm kiếm cho: <strong style="color:var(--gold)">"${currentSearch}"</strong>`;
+  }
+
+  async function loadProducts() {
+    const grid = document.getElementById('productsGrid');
+    grid.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+    try {
+      const query = { page: currentPage, limit: 12 };
+      if (currentCategory) query.category_id = currentCategory;
+      if (currentSearch)   query.search      = currentSearch;
+
+      const { products, total, total_pages } = await Products.getAll(query);
+
+      // Sắp xếp client-side
+      if (currentSort === 'price_asc')  products.sort((a,b) => a.price - b.price);
+      if (currentSort === 'price_desc') products.sort((a,b) => b.price - a.price);
+
+      if (!products.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🎵</div><h3>Không tìm thấy sản phẩm</h3><p>Thử tìm kiếm với từ khóa khác</p></div>`;
+        document.getElementById('pagination').innerHTML = '';
+        return;
+      }
+
+      grid.innerHTML = products.map(renderCard).join('');
+      renderPagination(total_pages);
+    } catch(e) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">⚠️</div><p>${e.message}</p></div>`;
+    }
+  }
+
+  function renderCard(p) {
+    const finalPrice = p.price * (1 - (p.discount||0) / 100);
+    return `
+    <div class="product-card">
+      <a href="product-detail.html?id=${p.product_id}">
+        <div class="product-img">
+          ${p.image_url
+            ? `<img src="${p.image_url}" alt="${p.product_name}" onerror="this.parentElement.innerHTML='<div class=placeholder>🎵</div>'"/>`
+            : `<div class="placeholder">🎵</div>`}
+          ${p.discount > 0 ? `<span class="badge-discount">-${p.discount}%</span>` : ''}
+        </div>
+      </a>
+      <div class="product-body">
+        <div class="product-category">${p.category_name||''}</div>
+        <a href="product-detail.html?id=${p.product_id}">
+          <div class="product-name">${p.product_name}</div>
+        </a>
+        <div class="product-brand">${p.brand||''}</div>
+        <div class="product-price">
+          <span class="price-current">${formatPrice(finalPrice)}</span>
+          ${p.discount > 0 ? `<span class="price-original">${formatPrice(p.price)}</span>` : ''}
+        </div>
+      </div>
+      <div class="product-footer">
+        <button class="btn btn-outline btn-sm" onclick="addToCart(${p.product_id},'${p.product_name}')">🛒 Thêm giỏ</button>
+        <a href="product-detail.html?id=${p.product_id}" class="btn btn-primary btn-sm">Xem</a>
+      </div>
+    </div>`;
+  }
+
+  function renderPagination(totalPages) {
+    const pag = document.getElementById('pagination');
+    if (totalPages <= 1) { pag.innerHTML = ''; return; }
+    let html = '';
+    for (let i = 1; i <= totalPages; i++) {
+      html += `<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+    }
+    pag.innerHTML = html;
+  }
+
+  function goPage(page) { currentPage = page; loadProducts(); window.scrollTo(0,0); }
+
+  function setCategory(cat) {
+    currentCategory = cat;
+    currentPage = 1;
+    currentSearch = '';
+    document.getElementById('searchInfo').style.display = 'none';
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(cat ? `cat-${cat}` : 'cat-all')?.classList.add('active');
+    loadProducts();
+  }
+
+  function setSort(val) { currentSort = val; loadProducts(); }
+
+  async function addToCart(product_id, name) {
+    if (!Auth.isLoggedIn()) {
+      showToast('Vui lòng đăng nhập!', 'error');
+      setTimeout(() => window.location.href = 'login.html?redirect=' + encodeURIComponent(location.href), 1000);
+      return;
+    }
+    try {
+      await Cart.add(product_id);
+      showToast(`Đã thêm "${name}" vào giỏ hàng!`, 'success');
+      updateCartBadge();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  loadProducts();
+</script>
+</body>
+</html>

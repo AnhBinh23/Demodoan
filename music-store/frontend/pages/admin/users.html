@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quản lý khách hàng — Admin</title>
+  <link rel="stylesheet" href="admin.css"/>
+</head>
+<body>
+
+<div id="sidebar-placeholder"></div>
+
+<main class="admin-main">
+  <div class="page-header">
+    <h1>Khách hàng</h1>
+    <p>Quản lý tài khoản người dùng</p>
+  </div>
+
+  <!-- STATS -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem" id="userStats">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(201,168,76,0.1)">👥</div>
+      <div class="stat-info"><div class="value" id="totalUsers">...</div><div class="label">Tổng người dùng</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(76,175,128,0.1)">🛍️</div>
+      <div class="stat-info"><div class="value" id="totalCustomers">...</div><div class="label">Khách hàng</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(186,85,211,0.1)">⚙️</div>
+      <div class="stat-info"><div class="value" id="totalAdmins">...</div><div class="label">Quản trị viên</div></div>
+    </div>
+  </div>
+
+  <div class="admin-table-wrap">
+    <div class="table-toolbar">
+      <div class="search-input">
+        <span>🔍</span>
+        <input type="text" placeholder="Tìm theo tên, email..." id="searchInput" oninput="filterUsers()"/>
+      </div>
+      <select class="form-select" style="width:auto;padding:0.4rem 0.8rem" id="roleFilter" onchange="filterUsers()">
+        <option value="">Tất cả</option>
+        <option value="customer">Khách hàng</option>
+        <option value="admin">Quản trị viên</option>
+      </select>
+    </div>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Họ tên</th><th>Email</th><th>Số điện thoại</th><th>Vai trò</th><th>Ngày tạo</th><th>Thao tác</th></tr>
+      </thead>
+      <tbody id="usersBody">
+        <tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- MODAL XEM CHI TIẾT / SỬA -->
+<div class="modal-overlay" id="userModal" style="display:none">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h3 id="modalTitle">Chi tiết tài khoản</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modalContent"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Đóng</button>
+      <button class="btn btn-primary" id="saveUserBtn" onclick="saveUser()" style="display:none">Lưu thay đổi</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="../../js/api.js"></script>
+<script src="sidebar.js"></script>
+<script>
+  renderSidebar('users');
+  let allUsers = [], currentUserId = null;
+
+  async function loadUsers() {
+    try {
+      allUsers = await api.get('/users/admin/all');
+      updateStats();
+      renderTable(allUsers);
+    } catch(e) {
+      // Nếu chưa có API users thì dùng dữ liệu mẫu
+      showToast('Không thể tải danh sách người dùng!', 'error');
+      document.getElementById('usersBody').innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">👥</div><p>Chưa có dữ liệu</p></div></td></tr>`;
+    }
+  }
+
+  function updateStats() {
+    const customers = allUsers.filter(u => u.role === 'customer');
+    const admins    = allUsers.filter(u => u.role === 'admin');
+    document.getElementById('totalUsers').textContent     = allUsers.length;
+    document.getElementById('totalCustomers').textContent = customers.length;
+    document.getElementById('totalAdmins').textContent    = admins.length;
+  }
+
+  function renderTable(users) {
+    const tbody = document.getElementById('usersBody');
+    if (!users.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">👥</div><p>Không tìm thấy người dùng</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td style="color:var(--gold);font-weight:600">#${u.user_id}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:0.7rem">
+            <div style="width:34px;height:34px;border-radius:50%;background:var(--gold-dim);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:0.85rem;color:var(--gold-light);flex-shrink:0">
+              ${u.full_name?.[0]?.toUpperCase() || 'U'}
+            </div>
+            <span style="font-weight:500">${u.full_name}</span>
+          </div>
+        </td>
+        <td style="font-size:0.85rem">${u.email}</td>
+        <td style="color:var(--muted);font-size:0.85rem">${u.phone || '—'}</td>
+        <td>
+          <span class="badge ${u.role === 'admin' ? 'badge-shipping' : 'badge-active'}">
+            ${u.role === 'admin' ? '⚙️ Admin' : '👤 Khách hàng'}
+          </span>
+        </td>
+        <td style="color:var(--muted);font-size:0.82rem">${new Date(u.created_at).toLocaleDateString('vi-VN')}</td>
+        <td style="display:flex;gap:0.4rem">
+          <button class="btn btn-outline btn-sm" onclick="viewUser(${u.user_id})">👁 Xem</button>
+          <button class="btn btn-danger btn-sm" onclick="toggleActive(${u.user_id}, ${u.is_active}, '${u.full_name}')"
+            ${u.role === 'admin' ? 'disabled title="Không thể khóa Admin"' : ''}>
+            ${u.is_active ? '🔒 Khóa' : '🔓 Mở'}
+          </button>
+        </td>
+      </tr>`).join('');
+  }
+
+  function filterUsers() {
+    const q    = document.getElementById('searchInput').value.toLowerCase();
+    const role = document.getElementById('roleFilter').value;
+    renderTable(allUsers.filter(u =>
+      (!q    || u.full_name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) &&
+      (!role || u.role === role)
+    ));
+  }
+
+  function viewUser(id) {
+    currentUserId = id;
+    const u = allUsers.find(x => x.user_id === id);
+    if (!u) return;
+
+    document.getElementById('modalTitle').textContent = 'Chi tiết tài khoản';
+    document.getElementById('saveUserBtn').style.display = 'flex';
+    document.getElementById('modalContent').innerHTML = `
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;padding-bottom:1.2rem;border-bottom:1px solid var(--border)">
+        <div style="width:60px;height:60px;border-radius:50%;background:var(--gold-dim);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:var(--gold-light)">
+          ${u.full_name?.[0]?.toUpperCase() || 'U'}
+        </div>
+        <div>
+          <div style="font-weight:600;font-size:1.05rem">${u.full_name}</div>
+          <div style="font-size:0.85rem;color:var(--muted)">${u.email}</div>
+          <span class="badge ${u.role === 'admin' ? 'badge-shipping' : 'badge-active'}" style="margin-top:0.3rem">
+            ${u.role === 'admin' ? '⚙️ Admin' : '👤 Khách hàng'}
+          </span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.2rem">
+        <div class="form-group">
+          <label class="form-label">Họ và tên</label>
+          <input type="text" class="form-input" id="editName" value="${u.full_name || ''}"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Số điện thoại</label>
+          <input type="tel" class="form-input" id="editPhone" value="${u.phone || ''}"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Địa chỉ</label>
+        <input type="text" class="form-input" id="editAddress" value="${u.address || ''}"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Vai trò</label>
+        <select class="form-select" id="editRole" ${u.user_id === Auth.getUser()?.user_id ? 'disabled' : ''}>
+          <option value="customer" ${u.role === 'customer' ? 'selected' : ''}>Khách hàng</option>
+          <option value="admin"    ${u.role === 'admin'    ? 'selected' : ''}>Quản trị viên</option>
+        </select>
+      </div>
+      <div style="background:var(--bg3);border-radius:var(--radius);padding:0.8rem;font-size:0.82rem;color:var(--muted)">
+        📅 Ngày tạo: ${new Date(u.created_at).toLocaleDateString('vi-VN')} &nbsp;|&nbsp;
+        🔑 Trạng thái: <span style="color:${u.is_active ? 'var(--green)' : 'var(--red)'}">${u.is_active ? 'Hoạt động' : 'Đã khóa'}</span>
+      </div>`;
+
+    document.getElementById('userModal').style.display = 'flex';
+  }
+
+  async function saveUser() {
+    const full_name = document.getElementById('editName').value.trim();
+    const phone     = document.getElementById('editPhone').value.trim();
+    const address   = document.getElementById('editAddress').value.trim();
+    const role      = document.getElementById('editRole').value;
+
+    const btn = document.getElementById('saveUserBtn');
+    btn.disabled = true; btn.textContent = 'Đang lưu...';
+    try {
+      await api.put('/users/admin/' + currentUserId, { full_name, phone, address, role });
+      showToast('Cập nhật tài khoản thành công!', 'success');
+      closeModal();
+      await loadUsers();
+    } catch(e) { showToast(e.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Lưu thay đổi'; }
+  }
+
+  async function toggleActive(id, isActive, name) {
+    const action = isActive ? 'khóa' : 'mở khóa';
+    if (!confirm(`Bạn có chắc muốn ${action} tài khoản "${name}"?`)) return;
+    try {
+      await api.put('/users/admin/' + id, { is_active: isActive ? 0 : 1 });
+      showToast(`Đã ${action} tài khoản thành công!`, 'success');
+      await loadUsers();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  function closeModal() { document.getElementById('userModal').style.display = 'none'; }
+
+  loadUsers();
+</script>
+</body>
+</html>

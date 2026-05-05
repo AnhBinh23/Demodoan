@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chi tiết sản phẩm — MusicStore</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<div class="section" style="padding-top:2rem" id="mainContent">
+  <div class="loading"><div class="spinner"></div></div>
+</div>
+
+<div id="footer-placeholder"></div>
+<div id="toast-container"></div>
+
+<script src="../js/api.js"></script>
+<script src="../js/main.js"></script>
+<script>
+  renderHeader('products');
+  renderFooter();
+
+  const productId = new URLSearchParams(location.search).get('id');
+  if (!productId) window.location.href = 'products.html';
+
+  async function loadProduct() {
+    const content = document.getElementById('mainContent');
+    try {
+      const p = await Products.getById(productId);
+      const finalPrice = p.price * (1 - (p.discount||0) / 100);
+
+      document.title = `${p.product_name} — MusicStore`;
+
+      content.innerHTML = `
+      <!-- BREADCRUMB -->
+      <div style="font-size:0.82rem;color:var(--muted);margin-bottom:1.5rem">
+        <a href="../index.html" style="color:var(--muted)">Trang chủ</a> /
+        <a href="products.html?category_id=${p.category_id}" style="color:var(--muted)">${p.category_name}</a> /
+        <span style="color:var(--cream)">${p.product_name}</span>
+      </div>
+
+      <!-- DETAIL GRID -->
+      <div class="detail-grid">
+        <!-- ẢNH -->
+        <div class="detail-images">
+          <div class="main-img" id="mainImg">
+            ${p.image_url
+              ? `<img src="${p.image_url}" alt="${p.product_name}" id="mainImgEl" onerror="this.parentElement.innerHTML='<div style=font-size:5rem;opacity:0.3>🎵</div>'"/>`
+              : `<div style="font-size:5rem;opacity:0.3">🎵</div>`}
+          </div>
+          ${p.images?.length ? `
+          <div class="thumb-list">
+            ${p.images.map((img,i) => `
+              <div class="thumb ${i===0?'active':''}" onclick="changeImg('${img.image_url}', this)">
+                <img src="${img.image_url}" alt=""/>
+              </div>`).join('')}
+          </div>` : ''}
+        </div>
+
+        <!-- THÔNG TIN -->
+        <div class="detail-info">
+          <div class="product-category">${p.category_name}</div>
+          <h1>${p.product_name}</h1>
+
+          <div style="display:flex;align-items:center;gap:1rem;margin:0.5rem 0">
+            <span style="color:var(--muted);font-size:0.88rem">Thương hiệu: <strong style="color:var(--cream)">${p.brand||'—'}</strong></span>
+            <span class="stock-badge ${p.stock>0?'stock-in':'stock-out'}">
+              ${p.stock>0 ? `✓ Còn hàng (${p.stock})` : '✕ Hết hàng'}
+            </span>
+          </div>
+
+          <!-- GIÁ -->
+          <div class="detail-price">
+            <span class="price-current">${formatPrice(finalPrice)}</span>
+            ${p.discount > 0 ? `
+              <span class="price-original">${formatPrice(p.price)}</span>
+              <span style="background:rgba(224,85,85,0.12);color:var(--red);font-size:0.8rem;padding:0.2rem 0.6rem;border-radius:999px;font-weight:600">-${p.discount}%</span>` : ''}
+          </div>
+
+          <hr class="divider"/>
+
+          <!-- MÔ TẢ -->
+          ${p.description ? `<p style="font-size:0.92rem;color:var(--muted);line-height:1.7;margin-bottom:1.2rem">${p.description}</p>` : ''}
+
+          <!-- THÔNG SỐ -->
+          <div class="specs" style="margin-bottom:1.5rem">
+            <div class="spec-item"><span class="spec-label">Danh mục</span><span class="spec-value">${p.category_name}</span></div>
+            <div class="spec-item"><span class="spec-label">Thương hiệu</span><span class="spec-value">${p.brand||'—'}</span></div>
+            <div class="spec-item"><span class="spec-label">Tình trạng</span><span class="spec-value" style="color:${p.stock>0?'var(--green)':'var(--red)'}">${p.stock>0?'Còn hàng':'Hết hàng'}</span></div>
+            <div class="spec-item"><span class="spec-label">Tồn kho</span><span class="spec-value">${p.stock} sản phẩm</span></div>
+          </div>
+
+          <!-- SỐ LƯỢNG -->
+          ${p.stock > 0 ? `
+          <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem">
+            <span style="font-size:0.85rem;color:var(--muted)">Số lượng:</span>
+            <div class="qty-selector">
+              <button class="qty-btn" onclick="changeQty(-1)">−</button>
+              <input type="number" class="qty-input" id="qtyInput" value="1" min="1" max="${p.stock}"/>
+              <button class="qty-btn" onclick="changeQty(1)">+</button>
+            </div>
+          </div>
+
+          <!-- NÚT MUA -->
+          <div class="detail-actions">
+            <button class="btn btn-primary" style="flex:1" onclick="addToCart(${p.product_id}, '${p.product_name}', ${p.stock})">
+              🛒 Thêm vào giỏ hàng
+            </button>
+            <button class="btn btn-outline" onclick="buyNow(${p.product_id}, '${p.product_name}', ${p.stock})">
+              ⚡ Mua ngay
+            </button>
+          </div>` : `
+          <div style="background:rgba(224,85,85,0.08);border:1px solid rgba(224,85,85,0.2);border-radius:var(--radius);padding:1rem;text-align:center;color:var(--red)">
+            Sản phẩm tạm hết hàng
+          </div>`}
+        </div>
+      </div>
+
+      <!-- ĐÁNH GIÁ -->
+      <div style="margin-top:3rem">
+        <h3 style="font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:1.5rem">Đánh giá sản phẩm</h3>
+        ${p.reviews?.length ? p.reviews.map(r => `
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.2rem;margin-bottom:0.8rem">
+            <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:0.5rem">
+              <div style="width:34px;height:34px;border-radius:50%;background:var(--gold-dim);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--gold-light)">${r.full_name?.[0]?.toUpperCase()}</div>
+              <div>
+                <div style="font-weight:500;font-size:0.88rem">${r.full_name}</div>
+                <div style="color:var(--gold);font-size:0.85rem">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
+              </div>
+              <div style="margin-left:auto;font-size:0.78rem;color:var(--muted)">${new Date(r.created_at).toLocaleDateString('vi-VN')}</div>
+            </div>
+            <p style="font-size:0.88rem;color:var(--muted)">${r.comment||''}</p>
+          </div>`).join('') : `
+          <div class="empty-state"><div class="icon">💬</div><p>Chưa có đánh giá nào</p></div>`}
+      </div>
+
+      <!-- SẢN PHẨM LIÊN QUAN -->
+      <div style="margin-top:3rem">
+        <h3 style="font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:1.5rem">Sản phẩm liên quan</h3>
+        <div class="products-grid" id="relatedGrid"><div class="loading"><div class="spinner"></div></div></div>
+      </div>`;
+
+      loadRelated(p.category_id, p.product_id);
+    } catch(e) {
+      content.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><h3>Không tìm thấy sản phẩm</h3><a href="products.html" class="btn btn-primary" style="margin-top:1rem">Quay lại</a></div>`;
+    }
+  }
+
+  async function loadRelated(categoryId, excludeId) {
+    try {
+      const { products } = await Products.getAll({ category_id: categoryId, limit: 4 });
+      const filtered = products.filter(p => p.product_id != excludeId).slice(0, 4);
+      document.getElementById('relatedGrid').innerHTML = filtered.map(p => {
+        const fp = p.price * (1 - (p.discount||0) / 100);
+        return `
+        <div class="product-card">
+          <a href="product-detail.html?id=${p.product_id}">
+            <div class="product-img">
+              ${p.image_url ? `<img src="${p.image_url}" alt="${p.product_name}" onerror="this.parentElement.innerHTML='<div class=placeholder>🎵</div>'"/>` : `<div class="placeholder">🎵</div>`}
+            </div>
+          </a>
+          <div class="product-body">
+            <div class="product-name"><a href="product-detail.html?id=${p.product_id}">${p.product_name}</a></div>
+            <div class="product-price"><span class="price-current">${formatPrice(fp)}</span></div>
+          </div>
+          <div class="product-footer">
+            <a href="product-detail.html?id=${p.product_id}" class="btn btn-primary btn-sm btn-block">Xem chi tiết</a>
+          </div>
+        </div>`;
+      }).join('');
+    } catch {}
+  }
+
+  function changeImg(url, el) {
+    document.getElementById('mainImgEl').src = url;
+    document.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function changeQty(delta) {
+    const inp = document.getElementById('qtyInput');
+    const max = parseInt(inp.max);
+    let val = parseInt(inp.value) + delta;
+    if (val < 1) val = 1;
+    if (val > max) val = max;
+    inp.value = val;
+  }
+
+  async function addToCart(product_id, name, stock) {
+    if (!Auth.isLoggedIn()) {
+      showToast('Vui lòng đăng nhập!', 'error');
+      setTimeout(() => window.location.href = 'login.html?redirect=' + encodeURIComponent(location.href), 1000);
+      return;
+    }
+    const qty = parseInt(document.getElementById('qtyInput')?.value || 1);
+    try {
+      await Cart.add(product_id, qty);
+      showToast(`Đã thêm "${name}" vào giỏ hàng!`, 'success');
+      updateCartBadge();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  async function buyNow(product_id, name, stock) {
+    await addToCart(product_id, name, stock);
+    setTimeout(() => window.location.href = 'cart.html', 800);
+  }
+
+  loadProduct();
+</script>
+</body>
+</html>

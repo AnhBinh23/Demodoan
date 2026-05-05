@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Đăng nhập — Ascent-Music</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">Ascent-<span style="color:var(--cream)">Music</span></div>
+    <h2>Đăng nhập</h2>
+    <p>Chào mừng trở lại! Vui lòng đăng nhập để tiếp tục.</p>
+
+    <div id="errorMsg" style="display:none;background:rgba(224,85,85,0.12);border:1px solid var(--red);border-radius:var(--radius);padding:0.75rem 1rem;font-size:0.85rem;color:var(--red);margin-bottom:1rem"></div>
+
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="email" placeholder="example@gmail.com"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mật khẩu</label>
+      <div style="position:relative">
+        <input type="password" class="form-input" id="password" placeholder="••••••••" style="padding-right:2.8rem"/>
+        <button onclick="togglePass()" style="position:absolute;right:0.8rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:1rem">👁</button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block" id="loginBtn" onclick="doLogin()">Đăng nhập</button>
+
+    <div class="auth-divider">hoặc</div>
+
+    <div class="auth-footer">
+      Chưa có tài khoản? <a href="register.html">Đăng ký ngay</a>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="../js/api.js"></script>
+<script>
+  // Nếu đã đăng nhập thì redirect
+  if (Auth.isLoggedIn()) {
+    const user = Auth.getUser();
+    window.location.href = user?.role === 'admin' ? 'admin/index.html' : '../index.html';
+  }
+
+  function togglePass() {
+    const inp = document.getElementById('password');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+
+  async function doLogin() {
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const btn      = document.getElementById('loginBtn');
+    const errBox   = document.getElementById('errorMsg');
+
+    if (!email || !password) {
+      errBox.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu!';
+      errBox.style.display = 'block'; return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
+    errBox.style.display = 'none';
+
+    try {
+      const res = await Auth.login(email, password);
+      Auth.saveUser(res.token, res.user);
+      showToast('Đăng nhập thành công!', 'success');
+
+      setTimeout(() => {
+        if (res.user.role === 'admin') {
+          window.location.href = 'admin/index.html';
+        } else {
+          const redirect = new URLSearchParams(location.search).get('redirect') || '../index.html';
+          window.location.href = redirect;
+        }
+      }, 800);
+    } catch(e) {
+      errBox.textContent = e.message;
+      errBox.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Đăng nhập';
+    }
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>

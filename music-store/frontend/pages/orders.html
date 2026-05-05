@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Đơn hàng của tôi — MusicStore</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<div class="section" style="padding-top:2rem">
+  <h2 class="section-title" style="margin-bottom:1.5rem">Đơn hàng <span>của tôi</span></h2>
+  <div id="ordersContent"><div class="loading"><div class="spinner"></div></div></div>
+</div>
+
+<div id="footer-placeholder"></div>
+<div id="toast-container"></div>
+
+<script src="../js/api.js"></script>
+<script src="../js/main.js"></script>
+<script>
+  renderHeader('');
+  renderFooter();
+
+  if (!Auth.isLoggedIn()) window.location.href = 'login.html';
+
+  const statusLabels = { pending:'Chờ xác nhận', confirmed:'Đã xác nhận', shipping:'Đang giao hàng', delivered:'Đã giao', cancelled:'Đã hủy' };
+  const statusColors = { pending:'var(--gold)', confirmed:'#6495ed', shipping:'#ba55d3', delivered:'var(--green)', cancelled:'var(--red)' };
+
+  async function loadOrders() {
+    const content = document.getElementById('ordersContent');
+    try {
+      const orders = await Orders.getMyOrders();
+
+      if (!orders.length) {
+        content.innerHTML = `
+        <div class="empty-state" style="padding:4rem 2rem">
+          <div class="icon">📦</div>
+          <h3>Chưa có đơn hàng nào</h3>
+          <p>Hãy mua sắm để tạo đơn hàng đầu tiên!</p>
+          <a href="products.html" class="btn btn-primary" style="margin-top:1.5rem">Mua sắm ngay</a>
+        </div>`; return;
+      }
+
+      content.innerHTML = orders.map(o => `
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.2rem;margin-bottom:0.8rem;transition:var(--transition)" onmouseover="this.style.borderColor='rgba(201,168,76,0.3)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.8rem">
+            <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">
+              <div>
+                <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase">Mã đơn hàng</div>
+                <div style="font-weight:600;color:var(--gold)">#${o.order_id}</div>
+              </div>
+              <div>
+                <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase">Ngày đặt</div>
+                <div style="font-size:0.88rem">${new Date(o.created_at).toLocaleDateString('vi-VN')}</div>
+              </div>
+              <div>
+                <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase">Tổng tiền</div>
+                <div style="font-weight:600;color:var(--gold)">${formatPrice(o.total_amount)}</div>
+              </div>
+              <div>
+                <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase">Thanh toán</div>
+                <div style="font-size:0.85rem">${o.payment_method==='cod'?'COD':'Chuyển khoản'}</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.8rem">
+              <span style="padding:0.25rem 0.9rem;border-radius:999px;font-size:0.78rem;font-weight:600;background:rgba(0,0,0,0.2);color:${statusColors[o.status]};border:1px solid ${statusColors[o.status]}">
+                ${statusLabels[o.status]}
+              </span>
+              ${o.status === 'pending' ? `<button class="btn btn-outline btn-sm" style="border-color:var(--red);color:var(--red)" onclick="cancelOrder(${o.order_id})">Hủy</button>` : ''}
+            </div>
+          </div>
+        </div>`).join('');
+    } catch(e) {
+      content.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>${e.message}</p></div>`;
+    }
+  }
+
+  async function cancelOrder(id) {
+    if (!confirm('Bạn có chắc muốn hủy đơn hàng này?')) return;
+    try {
+      await Orders.cancel(id);
+      showToast('Đã hủy đơn hàng!', 'success');
+      loadOrders();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  loadOrders();
+</script>
+</body>
+</html>

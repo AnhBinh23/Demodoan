@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Đăng ký — Ascent-Music</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+
+<div class="auth-page">
+  <div class="auth-card" style="max-width:500px">
+    <div class="auth-logo">Ascent-<span style="color:var(--cream)">Music</span></div>
+    <h2>Tạo tài khoản</h2>
+    <p>Đăng ký để mua sắm và theo dõi đơn hàng của bạn.</p>
+
+    <div id="errorMsg" style="display:none;background:rgba(224,85,85,0.12);border:1px solid var(--red);border-radius:var(--radius);padding:0.75rem 1rem;font-size:0.85rem;color:var(--red);margin-bottom:1rem"></div>
+    <div id="successMsg" style="display:none;background:rgba(76,175,128,0.12);border:1px solid var(--green);border-radius:var(--radius);padding:0.75rem 1rem;font-size:0.85rem;color:var(--green);margin-bottom:1rem"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="form-group">
+        <label class="form-label">Họ và tên *</label>
+        <input type="text" class="form-input" id="full_name" placeholder="Nguyễn Văn A"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Số điện thoại</label>
+        <input type="tel" class="form-input" id="phone" placeholder="0912345678"/>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Email *</label>
+      <input type="email" class="form-input" id="email" placeholder="example@gmail.com"/>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Địa chỉ</label>
+      <input type="text" class="form-input" id="address" placeholder="123 Đường ABC, Quận 1, TP.HCM"/>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Mật khẩu *</label>
+      <div style="position:relative">
+        <input type="password" class="form-input" id="password" placeholder="Ít nhất 6 ký tự" style="padding-right:2.8rem"/>
+        <button onclick="togglePass('password')" style="position:absolute;right:0.8rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:1rem">👁</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Xác nhận mật khẩu *</label>
+      <div style="position:relative">
+        <input type="password" class="form-input" id="confirm_password" placeholder="Nhập lại mật khẩu" style="padding-right:2.8rem"/>
+        <button onclick="togglePass('confirm_password')" style="position:absolute;right:0.8rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:1rem">👁</button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block" id="registerBtn" onclick="doRegister()">Tạo tài khoản</button>
+
+    <div class="auth-footer" style="margin-top:1rem">
+      Đã có tài khoản? <a href="login.html">Đăng nhập</a>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="../js/api.js"></script>
+<script>
+  if (Auth.isLoggedIn()) window.location.href = '../index.html';
+
+  function togglePass(id) {
+    const inp = document.getElementById(id);
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+
+  async function doRegister() {
+    const full_name        = document.getElementById('full_name').value.trim();
+    const phone            = document.getElementById('phone').value.trim();
+    const email            = document.getElementById('email').value.trim();
+    const address          = document.getElementById('address').value.trim();
+    const password         = document.getElementById('password').value;
+    const confirm_password = document.getElementById('confirm_password').value;
+    const btn              = document.getElementById('registerBtn');
+    const errBox           = document.getElementById('errorMsg');
+    const sucBox           = document.getElementById('successMsg');
+
+    errBox.style.display = 'none';
+    sucBox.style.display = 'none';
+
+    if (!full_name || !email || !password) {
+      errBox.textContent = 'Vui lòng điền đầy đủ thông tin bắt buộc!';
+      errBox.style.display = 'block'; return;
+    }
+    if (password.length < 6) {
+      errBox.textContent = 'Mật khẩu phải có ít nhất 6 ký tự!';
+      errBox.style.display = 'block'; return;
+    }
+    if (password !== confirm_password) {
+      errBox.textContent = 'Mật khẩu xác nhận không khớp!';
+      errBox.style.display = 'block'; return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Đang tạo tài khoản...';
+
+    try {
+      await Auth.register({ full_name, phone, email, address, password });
+      sucBox.textContent = '🎉 Đăng ký thành công! Đang chuyển đến trang đăng nhập...';
+      sucBox.style.display = 'block';
+      setTimeout(() => window.location.href = 'login.html', 1800);
+    } catch(e) {
+      errBox.textContent = e.message;
+      errBox.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Tạo tài khoản';
+    }
+  }
+</script>
+</body>
+</html>

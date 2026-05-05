@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quản lý danh mục — Admin</title>
+  <link rel="stylesheet" href="admin.css"/>
+</head>
+<body>
+
+<div id="sidebar-placeholder"></div>
+
+<main class="admin-main">
+  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
+    <div><h1>Danh mục</h1><p>Quản lý danh mục nhạc cụ</p></div>
+    <button class="btn btn-primary" onclick="openModal()">+ Thêm danh mục</button>
+  </div>
+
+  <div class="admin-table-wrap">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Tên danh mục</th><th>Mô tả</th><th>Ngày tạo</th><th>Thao tác</th></tr>
+      </thead>
+      <tbody id="categoriesBody">
+        <tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- MODAL THÊM/SỬA -->
+<div class="modal-overlay" id="catModal" style="display:none">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3 id="modalTitle">Thêm danh mục</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <input type="hidden" id="editId"/>
+    <div class="form-group">
+      <label class="form-label">Tên danh mục *</label>
+      <input type="text" class="form-input" id="fName" placeholder="VD: Đàn Piano"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mô tả</label>
+      <textarea class="form-textarea" id="fDesc" placeholder="Mô tả danh mục..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">URL hình ảnh</label>
+      <input type="text" class="form-input" id="fImage" placeholder="/images/categories/..."/>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Hủy</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveCategory()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="../../js/api.js"></script>
+<script src="sidebar.js"></script>
+<script>
+  renderSidebar('categories');
+  let allCategories = [];
+
+  async function loadCategories() {
+    try {
+      allCategories = await Categories.getAll();
+      const tbody = document.getElementById('categoriesBody');
+
+      if (!allCategories.length) {
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">📂</div><p>Chưa có danh mục nào</p></div></td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = allCategories.map(c => `
+        <tr>
+          <td style="color:var(--gold);font-weight:600">#${c.category_id}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:0.8rem">
+              ${c.image_url
+                ? `<img src="${c.image_url}" style="width:40px;height:40px;border-radius:var(--radius);object-fit:cover" onerror="this.style.display='none'"/>`
+                : `<div style="width:40px;height:40px;border-radius:var(--radius);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:1.2rem">📂</div>`}
+              <span style="font-weight:500">${c.category_name}</span>
+            </div>
+          </td>
+          <td style="color:var(--muted);font-size:0.85rem">${c.description || '—'}</td>
+          <td style="color:var(--muted);font-size:0.82rem">${new Date(c.created_at).toLocaleDateString('vi-VN')}</td>
+          <td style="display:flex;gap:0.4rem">
+            <button class="btn btn-outline btn-sm" onclick="editCategory(${c.category_id})">✏️ Sửa</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteCategory(${c.category_id}, '${c.category_name}')">🗑</button>
+          </td>
+        </tr>`).join('');
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  function openModal(c = null) {
+    document.getElementById('modalTitle').textContent = c ? 'Sửa danh mục' : 'Thêm danh mục';
+    document.getElementById('editId').value  = c?.category_id || '';
+    document.getElementById('fName').value   = c?.category_name || '';
+    document.getElementById('fDesc').value   = c?.description || '';
+    document.getElementById('fImage').value  = c?.image_url || '';
+    document.getElementById('catModal').style.display = 'flex';
+  }
+
+  function closeModal() { document.getElementById('catModal').style.display = 'none'; }
+
+  function editCategory(id) {
+    const c = allCategories.find(x => x.category_id === id);
+    if (c) openModal(c);
+  }
+
+  async function saveCategory() {
+    const id   = document.getElementById('editId').value;
+    const data = {
+      category_name: document.getElementById('fName').value.trim(),
+      description:   document.getElementById('fDesc').value.trim(),
+      image_url:     document.getElementById('fImage').value.trim(),
+    };
+    if (!data.category_name) { showToast('Vui lòng nhập tên danh mục!', 'error'); return; }
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true; btn.textContent = 'Đang lưu...';
+    try {
+      if (id) {
+        await api.put('/categories/' + id, data);
+        showToast('Cập nhật danh mục thành công!', 'success');
+      } else {
+        await api.post('/categories', data);
+        showToast('Thêm danh mục thành công!', 'success');
+      }
+      closeModal();
+      await loadCategories();
+    } catch(e) { showToast(e.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Lưu'; }
+  }
+
+  async function deleteCategory(id, name) {
+    if (!confirm(`Xóa danh mục "${name}"?\nCác sản phẩm thuộc danh mục này sẽ bị ảnh hưởng!`)) return;
+    try {
+      await api.delete('/categories/' + id);
+      showToast('Đã xóa danh mục!', 'success');
+      await loadCategories();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  loadCategories();
+</script>
+</body>
+</html>

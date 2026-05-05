@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quản lý bản nhạc — Admin</title>
+  <link rel="stylesheet" href="admin.css"/>
+  <style>
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--bg3);
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--gold);
+      background: rgba(201,168,76,0.05);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-zone .icon { font-size: 2.2rem; margin-bottom: 0.5rem; opacity: 0.5; }
+    .upload-zone p { font-size: 0.85rem; color: var(--muted); margin: 0; }
+    .upload-zone .highlight { color: var(--gold); font-weight: 500; }
+    .file-preview {
+      display: flex; align-items: center; gap: 0.8rem;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.7rem 1rem;
+      margin-top: 0.6rem;
+    }
+    .file-preview .file-icon { font-size: 1.4rem; }
+    .file-preview .file-info { flex:1 }
+    .file-preview .file-name { font-size: 0.85rem; font-weight: 500; }
+    .file-preview .file-size { font-size: 0.75rem; color: var(--muted); }
+    .file-preview .remove-file { background:none; border:none; color:var(--muted); cursor:pointer; font-size:1rem; }
+    .file-preview .remove-file:hover { color: var(--red); }
+
+    .sheet-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.2rem;
+    }
+    .sheet-admin-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden;
+      transition: all 0.2s;
+    }
+    .sheet-admin-card:hover { border-color: rgba(201,168,76,0.35); }
+    .sheet-admin-thumb {
+      aspect-ratio: 16/9; background: var(--bg3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3rem; position: relative;
+    }
+    .sheet-admin-thumb img { width:100%; height:100%; object-fit:cover; }
+    .sheet-admin-body { padding: 1rem; }
+    .sheet-admin-tag {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--gold);
+      background: rgba(201,168,76,0.1); padding: 0.18rem 0.6rem;
+      border-radius: 999px; display: inline-block; margin-bottom: 0.5rem;
+    }
+    .sheet-admin-title { font-weight: 600; font-size: 0.92rem; margin-bottom: 0.25rem; }
+    .sheet-admin-meta { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.8rem; }
+    .sheet-admin-actions { display: flex; gap: 0.5rem; }
+
+    .view-toggle { display:flex; gap:0.5rem; margin-bottom:1.5rem; }
+    .toggle-btn {
+      padding: 0.4rem 1rem; border-radius: var(--radius); font-size:0.82rem;
+      background: var(--bg3); border: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: all 0.2s;
+    }
+    .toggle-btn.active { background: var(--gold); border-color: var(--gold); color: var(--bg); }
+  </style>
+</head>
+<body>
+
+<div id="sidebar-placeholder"></div>
+
+<main class="admin-main">
+  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+    <div><h1>Bản nhạc</h1><p>Quản lý thư viện bản nhạc</p></div>
+    <button class="btn btn-primary" onclick="openModal()">+ Upload bản nhạc</button>
+  </div>
+
+  <!-- VIEW TOGGLE + FILTER -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
+    <div class="view-toggle">
+      <button class="toggle-btn active" id="viewCard" onclick="setView('card')">⊞ Thẻ</button>
+      <button class="toggle-btn"        id="viewTable" onclick="setView('table')">☰ Bảng</button>
+    </div>
+    <div style="display:flex;gap:0.8rem;flex-wrap:wrap">
+      <div class="search-input" style="max-width:240px">
+        <span>🔍</span>
+        <input type="text" placeholder="Tìm bản nhạc..." id="searchInput" oninput="filterSheets()"/>
+      </div>
+      <select class="form-select" style="width:auto;padding:0.4rem 0.8rem" id="instrFilter" onchange="filterSheets()">
+        <option value="">Tất cả nhạc cụ</option>
+        <option value="Piano">Piano</option>
+        <option value="Guitar">Guitar</option>
+        <option value="Violin">Violin</option>
+        <option value="Organ">Organ</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- CARD VIEW -->
+  <div class="sheet-cards-grid" id="cardView">
+    <div class="loading" style="grid-column:1/-1"><div class="spinner"></div></div>
+  </div>
+
+  <!-- TABLE VIEW -->
+  <div class="admin-table-wrap" id="tableView" style="display:none">
+    <table>
+      <thead>
+        <tr><th>Tên bản nhạc</th><th>Tác giả</th><th>Nhạc cụ</th><th>Trình độ</th><th>Lượt xem</th><th>Trạng thái</th><th>Thao tác</th></tr>
+      </thead>
+      <tbody id="sheetsTableBody"></tbody>
+    </table>
+  </div>
+</main>
+
+<!-- MODAL UPLOAD -->
+<div class="modal-overlay" id="sheetModal" style="display:none">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <h3 id="modalTitle">Upload bản nhạc mới</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <input type="hidden" id="editId"/>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Tên bản nhạc *</label>
+        <input type="text" class="form-input" id="fTitle" placeholder="VD: Fur Elise"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tác giả / Soạn giả</label>
+        <input type="text" class="form-input" id="fComposer" placeholder="VD: Beethoven"/>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Nhạc cụ</label>
+        <select class="form-select" id="fInstrument">
+          <option value="Piano">🎹 Piano</option>
+          <option value="Guitar">🎸 Guitar</option>
+          <option value="Violin">🎻 Violin</option>
+          <option value="Organ">🎹 Organ</option>
+          <option value="Ukulele">🪕 Ukulele</option>
+          <option value="Khác">🎵 Khác</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Trình độ</label>
+        <select class="form-select" id="fDifficulty">
+          <option value="beginner">⭐ Cơ bản</option>
+          <option value="intermediate">⭐⭐ Trung cấp</option>
+          <option value="advanced">⭐⭐⭐ Nâng cao</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Mô tả ngắn</label>
+      <textarea class="form-textarea" id="fDesc" rows="2" placeholder="Mô tả bản nhạc này..."></textarea>
+    </div>
+
+    <!-- FILE UPLOAD -->
+    <div class="form-group" id="fileGroup">
+      <label class="form-label">File bản nhạc * <span style="color:var(--muted);font-weight:400">(PDF hoặc ảnh JPG/PNG, tối đa 20MB)</span></label>
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fFile" accept=".pdf,.jpg,.jpeg,.png" onchange="previewFile(this,'filePreview','uploadZone')"/>
+        <div class="icon">📄</div>
+        <p><span class="highlight">Nhấn để chọn file</span> hoặc kéo thả vào đây</p>
+        <p style="margin-top:0.3rem;font-size:0.75rem">PDF, JPG, PNG — Tối đa 20MB</p>
+      </div>
+      <div id="filePreview" style="display:none"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Ảnh bìa <span style="color:var(--muted);font-weight:400">(tùy chọn)</span></label>
+      <div class="upload-zone" id="thumbZone" style="padding:1rem">
+        <input type="file" id="fThumb" accept=".jpg,.jpeg,.png" onchange="previewFile(this,'thumbPreview','thumbZone')"/>
+        <p><span class="highlight">Chọn ảnh bìa</span> (JPG, PNG)</p>
+      </div>
+      <div id="thumbPreview" style="display:none"></div>
+    </div>
+
+    <div id="uploadProgress" style="display:none;margin-bottom:1rem">
+      <div style="background:var(--bg3);border-radius:999px;height:6px;overflow:hidden">
+        <div id="progressBar" style="height:100%;background:var(--gold);width:0%;transition:width 0.3s;border-radius:999px"></div>
+      </div>
+      <p style="font-size:0.78rem;color:var(--muted);margin-top:0.4rem;text-align:center" id="progressText">Đang upload...</p>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Hủy</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveSheet()">
+        <span id="saveBtnText">⬆ Upload bản nhạc</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="../../js/api.js"></script>
+<script src="sidebar.js"></script>
+<script>
+  renderSidebar('sheets');
+
+  const instrIcons = { Piano:'🎹', Guitar:'🎸', Violin:'🎻', Organ:'🎹', Ukulele:'🪕' };
+  const diffLabels = { beginner:'Cơ bản', intermediate:'Trung cấp', advanced:'Nâng cao' };
+  const diffClass  = { beginner:'badge-active', intermediate:'badge-pending', advanced:'badge-cancelled' };
+
+  let allSheets = [];
+  let currentView = 'card';
+
+  async function loadSheets() {
+    try {
+      const { sheets } = await api.get('/sheets?limit=100');
+      allSheets = sheets || [];
+      renderAll(allSheets);
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  function renderAll(sheets) {
+    renderCards(sheets);
+    renderTable(sheets);
+  }
+
+  function renderCards(sheets) {
+    const grid = document.getElementById('cardView');
+    if (!sheets.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🎼</div><p>Chưa có bản nhạc nào</p></div>`;
+      return;
+    }
+    grid.innerHTML = sheets.map(s => `
+      <div class="sheet-admin-card">
+        <div class="sheet-admin-thumb">
+          ${s.thumbnail_url
+            ? `<img src="${s.thumbnail_url}" alt="${s.title}" onerror="this.style.display='none'"/><span>${instrIcons[s.instrument]||'🎵'}</span>`
+            : `<span>${instrIcons[s.instrument]||'🎵'}</span>`}
+        </div>
+        <div class="sheet-admin-body">
+          <span class="sheet-admin-tag">${s.instrument}</span>
+          <div class="sheet-admin-title">${s.title}</div>
+          <div class="sheet-admin-meta">
+            ${s.composer ? `♩ ${s.composer}  ·  ` : ''}${diffLabels[s.difficulty]}  ·  👁 ${s.view_count}
+          </div>
+          <div class="sheet-admin-actions">
+            <a href="${s.file_url}" target="_blank" class="btn btn-outline btn-sm" style="flex:1">👁 Xem</a>
+            <button class="btn btn-outline btn-sm" onclick="editSheet(${s.sheet_id})">✏️</button>
+            <button class="btn btn-danger btn-sm"  onclick="deleteSheet(${s.sheet_id},'${s.title.replace(/'/g,"\\'")}')">🗑</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  function renderTable(sheets) {
+    const tbody = document.getElementById('sheetsTableBody');
+    if (!sheets.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🎼</div><p>Không có bản nhạc</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = sheets.map(s => `
+      <tr>
+        <td><div style="font-weight:500">${s.title}</div><div style="font-size:0.75rem;color:var(--muted)">${s.file_type.toUpperCase()}</div></td>
+        <td style="color:var(--muted);font-size:0.85rem">${s.composer||'—'}</td>
+        <td>${instrIcons[s.instrument]||''} ${s.instrument}</td>
+        <td><span class="badge ${diffClass[s.difficulty]}">${diffLabels[s.difficulty]}</span></td>
+        <td style="color:var(--muted)">👁 ${s.view_count}</td>
+        <td><span class="badge ${s.is_active?'badge-active':'badge-inactive'}">${s.is_active?'Hiện':'Ẩn'}</span></td>
+        <td style="display:flex;gap:0.4rem">
+          <a href="${s.file_url}" target="_blank" class="btn btn-outline btn-sm">👁</a>
+          <button class="btn btn-outline btn-sm" onclick="editSheet(${s.sheet_id})">✏️</button>
+          <button class="btn btn-danger btn-sm"  onclick="deleteSheet(${s.sheet_id},'${s.title.replace(/'/g,"\\'")}')">🗑</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  function setView(view) {
+    currentView = view;
+    document.getElementById('cardView').style.display  = view==='card'  ? 'grid'  : 'none';
+    document.getElementById('tableView').style.display = view==='table' ? 'block' : 'none';
+    document.getElementById('viewCard').classList.toggle('active',  view==='card');
+    document.getElementById('viewTable').classList.toggle('active', view==='table');
+  }
+
+  function filterSheets() {
+    const q     = document.getElementById('searchInput').value.toLowerCase();
+    const instr = document.getElementById('instrFilter').value;
+    renderAll(allSheets.filter(s =>
+      (!q     || s.title.toLowerCase().includes(q) || (s.composer||'').toLowerCase().includes(q)) &&
+      (!instr || s.instrument === instr)
+    ));
+  }
+
+  function previewFile(input, previewId, zoneId) {
+    const preview = document.getElementById(previewId);
+    const zone    = document.getElementById(zoneId);
+    if (!input.files[0]) { preview.style.display='none'; return; }
+    const f = input.files[0];
+    const isImg = f.type.startsWith('image/');
+    preview.style.display = 'flex';
+    preview.className = 'file-preview';
+    preview.innerHTML = `
+      <span class="file-icon">${isImg ? '🖼️' : '📄'}</span>
+      <div class="file-info">
+        <div class="file-name">${f.name}</div>
+        <div class="file-size">${(f.size/1024/1024).toFixed(2)} MB</div>
+      </div>
+      <button class="remove-file" onclick="removeFile('${input.id}','${previewId}','${zoneId}')">✕</button>`;
+    zone.style.display = 'none';
+  }
+
+  function removeFile(inputId, previewId, zoneId) {
+    document.getElementById(inputId).value = '';
+    document.getElementById(previewId).style.display = 'none';
+    document.getElementById(zoneId).style.display = 'block';
+  }
+
+  function openModal(s = null) {
+    document.getElementById('modalTitle').textContent  = s ? 'Sửa thông tin bản nhạc' : 'Upload bản nhạc mới';
+    document.getElementById('saveBtnText').textContent = s ? '✓ Lưu thay đổi' : '⬆ Upload bản nhạc';
+    document.getElementById('editId').value        = s?.sheet_id || '';
+    document.getElementById('fTitle').value        = s?.title || '';
+    document.getElementById('fComposer').value     = s?.composer || '';
+    document.getElementById('fInstrument').value   = s?.instrument || 'Piano';
+    document.getElementById('fDifficulty').value   = s?.difficulty || 'beginner';
+    document.getElementById('fDesc').value         = s?.description || '';
+    document.getElementById('fileGroup').style.display = s ? 'none' : 'block';
+    document.getElementById('uploadProgress').style.display = 'none';
+    ['filePreview','thumbPreview'].forEach(id => document.getElementById(id).style.display = 'none');
+    ['uploadZone','thumbZone'].forEach(id => document.getElementById(id).style.display = 'block');
+    document.getElementById('sheetModal').style.display = 'flex';
+  }
+
+  function closeModal() { document.getElementById('sheetModal').style.display = 'none'; }
+
+  function editSheet(id) {
+    const s = allSheets.find(x => x.sheet_id === id);
+    if (s) openModal(s);
+  }
+
+  async function saveSheet() {
+    const id    = document.getElementById('editId').value;
+    const title = document.getElementById('fTitle').value.trim();
+    if (!title) { showToast('Vui lòng nhập tên bản nhạc!', 'error'); return; }
+
+    const btn  = document.getElementById('saveBtn');
+    const text = document.getElementById('saveBtnText');
+    btn.disabled = true; text.textContent = 'Đang xử lý...';
+
+    try {
+      if (id) {
+        await api.put('/sheets/' + id, {
+          title, composer: document.getElementById('fComposer').value.trim(),
+          instrument: document.getElementById('fInstrument').value,
+          difficulty: document.getElementById('fDifficulty').value,
+          description: document.getElementById('fDesc').value,
+          is_free: 1, is_active: 1,
+        });
+        showToast('Cập nhật thành công!', 'success');
+      } else {
+        const fileInput = document.getElementById('fFile');
+        if (!fileInput.files[0]) { showToast('Vui lòng chọn file bản nhạc!', 'error'); return; }
+
+        const formData = new FormData();
+        formData.append('title',       title);
+        formData.append('composer',    document.getElementById('fComposer').value.trim());
+        formData.append('instrument',  document.getElementById('fInstrument').value);
+        formData.append('difficulty',  document.getElementById('fDifficulty').value);
+        formData.append('description', document.getElementById('fDesc').value);
+        formData.append('is_free',     '1');
+        formData.append('sheet_file',  fileInput.files[0]);
+        const thumb = document.getElementById('fThumb');
+        if (thumb.files[0]) formData.append('thumbnail', thumb.files[0]);
+
+        // Hiện progress
+        document.getElementById('uploadProgress').style.display = 'block';
+        document.getElementById('progressBar').style.width = '30%';
+        document.getElementById('progressText').textContent = 'Đang tải file lên...';
+
+        const token = localStorage.getItem('token');
+        const res = await fetch('http://localhost:5000/api/sheets', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: formData,
+        });
+
+        document.getElementById('progressBar').style.width = '100%';
+        document.getElementById('progressText').textContent = 'Hoàn thành!';
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+        showToast('Upload bản nhạc thành công! 🎼', 'success');
+      }
+
+      closeModal();
+      await loadSheets();
+    } catch(e) {
+      showToast(e.message, 'error');
+      document.getElementById('uploadProgress').style.display = 'none';
+    } finally {
+      btn.disabled = false;
+      text.textContent = id ? '✓ Lưu thay đổi' : '⬆ Upload bản nhạc';
+    }
+  }
+
+  async function deleteSheet(id, name) {
+    if (!confirm(`Xóa bản nhạc "${name}"?`)) return;
+    try {
+      await api.delete('/sheets/' + id);
+      showToast('Đã xóa bản nhạc!', 'success');
+      await loadSheets();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  loadSheets();
+</script>
+</body>
+</html>

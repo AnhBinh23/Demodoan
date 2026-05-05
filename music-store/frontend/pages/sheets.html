@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Thư viện bản nhạc — Ascent-Music</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <style>
+    .sheets-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .sheet-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+    }
+    .sheet-card:hover {
+      border-color: rgba(201,168,76,0.4);
+      transform: translateY(-5px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+    }
+
+    /* ẢNH / ICON NHẠC CỤ */
+    .sheet-thumb {
+      aspect-ratio: 16/9;
+      background: var(--bg3);
+      display: flex; align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+      font-size: 4rem;
+    }
+    .sheet-thumb img { width:100%; height:100%; object-fit:cover; }
+    .sheet-thumb .instr-icon {
+      font-size: 3.5rem;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+      transition: transform 0.3s ease;
+    }
+    .sheet-card:hover .instr-icon { transform: scale(1.12) rotate(-5deg); }
+
+    /* BADGE */
+    .sheet-tag {
+      display: inline-block;
+      background: rgba(201,168,76,0.12);
+      color: var(--gold);
+      font-size: 0.72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 0.22rem 0.75rem; border-radius: 999px;
+      margin-bottom: 0.75rem;
+    }
+    .diff-beginner     { background: rgba(76,175,128,0.12); color: #4caf80; }
+    .diff-intermediate { background: rgba(201,168,76,0.12); color: var(--gold); }
+    .diff-advanced     { background: rgba(224,85,85,0.12);  color: #e05555; }
+
+    /* BODY */
+    .sheet-body { padding: 1.2rem 1.3rem; flex:1; display:flex; flex-direction:column; }
+
+    .sheet-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem; font-weight: 700;
+      line-height: 1.4; margin-bottom: 0.4rem;
+      color: var(--cream);
+      transition: color 0.2s;
+    }
+    .sheet-card:hover .sheet-title { color: var(--gold); }
+
+    .sheet-desc {
+      font-size: 0.85rem; color: var(--muted);
+      line-height: 1.65; margin-bottom: 1rem;
+      flex:1;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .sheet-footer-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 0.8rem;
+      border-top: 1px solid var(--border);
+      margin-top: auto;
+    }
+    .sheet-date { font-size: 0.78rem; color: var(--muted); display:flex; align-items:center; gap:0.4rem; }
+    .sheet-read-btn { font-size: 0.82rem; color: var(--gold); font-weight: 600; transition: gap 0.2s; display:flex; align-items:center; gap:0.3rem; }
+    .sheet-card:hover .sheet-read-btn { gap: 0.6rem; }
+
+    /* VIEWER */
+    .viewer-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+      z-index: 300; display: none; flex-direction: column;
+    }
+    .viewer-overlay.open { display: flex; }
+    .viewer-header {
+      background: var(--bg2); border-bottom: 1px solid var(--border);
+      padding: 0.9rem 1.5rem; display: flex; align-items: center; gap: 1rem;
+    }
+    .viewer-info { flex:1 }
+    .viewer-title { font-weight: 600; font-size: 1rem; }
+    .viewer-sub { font-size: 0.8rem; color: var(--muted); margin-top: 0.1rem; }
+    .viewer-close { background:none; border:none; color:var(--muted); font-size:1.5rem; line-height:1; cursor:pointer; transition:color 0.2s; }
+    .viewer-close:hover { color: var(--red); }
+    .viewer-body { flex:1; overflow:auto; display:flex; align-items:flex-start; justify-content:center; padding:1.5rem; background: #111; }
+    .viewer-body iframe { width:100%; max-width:900px; height:82vh; border:none; border-radius:var(--radius); }
+    .viewer-body img    { max-width:900px; width:100%; border-radius:var(--radius); }
+
+    /* HERO */
+    .sheets-hero {
+      background: linear-gradient(135deg, #0e0e10 0%, #1a1408 50%, #0e0e10 100%);
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 2.5rem; margin-bottom: 2.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1.5rem; position: relative; overflow: hidden;
+    }
+    .sheets-hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 50% 80% at 80% 50%, rgba(201,168,76,0.08) 0%, transparent 70%);
+    }
+    .sheets-hero > * { position: relative; z-index: 1; }
+    .hero-icons { display:flex; gap:0.5rem; font-size:2rem; opacity:0.35; }
+  </style>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<div class="section" style="padding-top:2rem">
+
+  <!-- HERO -->
+  <div class="sheets-hero">
+    <div>
+      <p style="font-size:0.75rem;color:var(--gold);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:0.6rem">Thư viện nhạc</p>
+      <h1 style="font-family:'Playfair Display',serif;font-size:clamp(1.6rem,3vw,2.2rem);margin-bottom:0.5rem">
+        Bản nhạc <span style="color:var(--gold)">miễn phí</span>
+      </h1>
+      <p style="color:var(--muted);font-size:0.9rem;max-width:420px;line-height:1.65">
+        Tải về và luyện tập với bộ sưu tập bản nhạc cho Piano, Guitar, Violin và nhiều nhạc cụ khác.
+      </p>
+    </div>
+    <div class="hero-icons">
+      <span>🎹</span><span>🎸</span><span>🎻</span><span>🎼</span>
+    </div>
+  </div>
+
+  <!-- FILTER -->
+  <div class="filter-bar" style="margin-bottom:2rem">
+    <button class="filter-btn active" id="btn-all"    onclick="setInstrument('')">Tất cả</button>
+    <button class="filter-btn"        id="btn-Piano"  onclick="setInstrument('Piano')">🎹 Piano</button>
+    <button class="filter-btn"        id="btn-Guitar" onclick="setInstrument('Guitar')">🎸 Guitar</button>
+    <button class="filter-btn"        id="btn-Violin" onclick="setInstrument('Violin')">🎻 Violin</button>
+    <button class="filter-btn"        id="btn-Organ"  onclick="setInstrument('Organ')">🎹 Organ</button>
+
+    <select class="sort-select" onchange="setDifficulty(this.value)">
+      <option value="">Mọi trình độ</option>
+      <option value="beginner">Cơ bản</option>
+      <option value="intermediate">Trung cấp</option>
+      <option value="advanced">Nâng cao</option>
+    </select>
+
+    <div class="header-search" style="flex:1;max-width:240px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" placeholder="Tìm bản nhạc..." id="searchInput" oninput="debounceSearch()"/>
+    </div>
+  </div>
+
+  <!-- GRID -->
+  <div class="sheets-grid" id="sheetsGrid">
+    <div class="loading" style="grid-column:1/-1"><div class="spinner"></div></div>
+  </div>
+
+  <!-- PAGINATION -->
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- VIEWER -->
+<div class="viewer-overlay" id="viewerOverlay">
+  <div class="viewer-header">
+    <div class="viewer-info">
+      <div class="viewer-title" id="viewerTitle">Bản nhạc</div>
+      <div class="viewer-sub" id="viewerSub"></div>
+    </div>
+    <a id="viewerDownload" href="#" download class="btn btn-outline btn-sm">⬇ Tải về</a>
+    <button class="viewer-close" onclick="closeViewer()">✕</button>
+  </div>
+  <div class="viewer-body" id="viewerBody"></div>
+</div>
+
+<div id="footer-placeholder"></div>
+<div id="toast-container"></div>
+
+<script src="../js/api.js"></script>
+<script src="../js/main.js"></script>
+<script>
+  renderHeader('sheets');
+  renderFooter();
+
+  const instrIcons = { Piano:'🎹', Guitar:'🎸', Violin:'🎻', Organ:'🎹', Ukulele:'🪕' };
+  const diffLabels = { beginner:'Cơ bản', intermediate:'Trung cấp', advanced:'Nâng cao' };
+  const diffClass  = { beginner:'diff-beginner', intermediate:'diff-intermediate', advanced:'diff-advanced' };
+
+  let filters = { instrument:'', difficulty:'', search:'', page:1 };
+  let searchTimer = null;
+
+  async function loadSheets() {
+    const grid = document.getElementById('sheetsGrid');
+    grid.innerHTML = '<div class="loading" style="grid-column:1/-1"><div class="spinner"></div></div>';
+
+    try {
+      const q = { page: filters.page, limit: 12 };
+      if (filters.instrument) q.instrument = filters.instrument;
+      if (filters.difficulty) q.difficulty = filters.difficulty;
+      if (filters.search)     q.search     = filters.search;
+
+      const { sheets, total_pages } = await api.get('/sheets?' + new URLSearchParams(q));
+
+      if (!sheets || !sheets.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🎼</div><h3>Không tìm thấy bản nhạc</h3><p>Thử tìm kiếm với từ khóa khác</p></div>`;
+        document.getElementById('pagination').innerHTML = '';
+        return;
+      }
+
+      grid.innerHTML = sheets.map(s => `
+        <div class="sheet-card" onclick="openViewer('${s.title.replace(/'/g,"\\'")}','${s.composer||''}','${s.file_url}','${s.file_type}','${s.instrument}')">
+          <div class="sheet-thumb" style="background:var(--bg3)">
+            ${s.thumbnail_url
+              ? `<img src="${s.thumbnail_url}" alt="${s.title}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+                 <span class="instr-icon" style="display:none">${instrIcons[s.instrument]||'🎵'}</span>`
+              : `<span class="instr-icon">${instrIcons[s.instrument]||'🎵'}</span>`}
+          </div>
+          <div class="sheet-body">
+            <span class="sheet-tag ${diffClass[s.difficulty]}">${s.instrument}</span>
+            <div class="sheet-title">${s.title}</div>
+            <p class="sheet-desc">${s.description || 'Bản nhạc ' + s.instrument + ' trình độ ' + diffLabels[s.difficulty] + '.'}</p>
+            <div class="sheet-footer-meta">
+              <span class="sheet-date">
+                📅 ${new Date(s.created_at).toLocaleDateString('vi-VN')}
+              </span>
+              <span class="sheet-read-btn">Xem bản nhạc →</span>
+            </div>
+          </div>
+        </div>`).join('');
+
+      renderPagination(total_pages);
+    } catch(e) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">⚠️</div><p>${e.message}</p></div>`;
+    }
+  }
+
+  function renderPagination(totalPages) {
+    const pag = document.getElementById('pagination');
+    if (!totalPages || totalPages <= 1) { pag.innerHTML = ''; return; }
+    let html = '';
+    for (let i = 1; i <= totalPages; i++) {
+      html += `<button class="page-btn ${i===filters.page?'active':''}" onclick="goPage(${i})">${i}</button>`;
+    }
+    pag.innerHTML = html;
+  }
+
+  function goPage(p) { filters.page = p; loadSheets(); window.scrollTo(0,0); }
+
+  function setInstrument(val) {
+    filters.instrument = val;
+    filters.page = 1;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('btn-' + (val || 'all'))?.classList.add('active');
+    loadSheets();
+  }
+
+  function setDifficulty(val) { filters.difficulty = val; filters.page = 1; loadSheets(); }
+
+  function debounceSearch() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      filters.search = document.getElementById('searchInput').value.trim();
+      filters.page = 1;
+      loadSheets();
+    }, 400);
+  }
+
+  function openViewer(title, composer, fileUrl, fileType, instrument) {
+    document.getElementById('viewerTitle').textContent = title;
+    document.getElementById('viewerSub').textContent   = composer ? `♩ ${composer}  ·  ${instrIcons[instrument]||''} ${instrument}` : `${instrIcons[instrument]||''} ${instrument}`;
+    document.getElementById('viewerDownload').href     = fileUrl;
+    document.getElementById('viewerDownload').download = title;
+
+    const body = document.getElementById('viewerBody');
+    body.innerHTML = fileType === 'pdf'
+      ? `<iframe src="${fileUrl}" title="${title}"></iframe>`
+      : `<img src="${fileUrl}" alt="${title}"/>`;
+
+    document.getElementById('viewerOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeViewer() {
+    document.getElementById('viewerOverlay').classList.remove('open');
+    document.getElementById('viewerBody').innerHTML = '';
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeViewer(); });
+  loadSheets();
+</script>
+</body>
+</html>

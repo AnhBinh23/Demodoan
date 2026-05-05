@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ascent-Music — Cửa hàng nhạc cụ</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-tag">🎵 Nhạc cụ chính hãng</div>
+    <h1>Nơi Âm Nhạc<br><em>Bắt Đầu</em> Từ Đây</h1>
+    <p>Khám phá bộ sưu tập piano, organ, guitar và violin cao cấp. Chính hãng, bảo hành đầy đủ, giao hàng toàn quốc.</p>
+    <div class="hero-actions">
+      <a href="pages/products.html" class="btn btn-primary">Khám phá ngay</a>
+      <a href="#categories" class="btn btn-outline">Xem danh mục</a>
+    </div>
+  </div>
+  <div class="hero-image">
+    <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="100" r="80" stroke="#c9a84c" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="100" y="115" text-anchor="middle" font-size="80" fill="#c9a84c">🎹</text>
+    </svg>
+  </div>
+</section>
+
+<!-- STATS -->
+<div style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:1.5rem 5%">
+  <div style="max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;text-align:center">
+    <div><div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:var(--gold)">500+</div><div style="font-size:0.82rem;color:var(--muted)">Sản phẩm</div></div>
+    <div><div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:var(--gold)">50+</div><div style="font-size:0.82rem;color:var(--muted)">Thương hiệu</div></div>
+    <div><div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:var(--gold)">10K+</div><div style="font-size:0.82rem;color:var(--muted)">Khách hàng</div></div>
+    <div><div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:var(--gold)">5★</div><div style="font-size:0.82rem;color:var(--muted)">Đánh giá</div></div>
+  </div>
+</div>
+
+<!-- CATEGORIES -->
+<div class="section" id="categories">
+  <div class="section-header">
+    <div>
+      <h2 class="section-title">Danh mục <span>sản phẩm</span></h2>
+      <p class="section-sub">Chọn nhạc cụ phù hợp với bạn</p>
+    </div>
+  </div>
+  <div class="categories-grid" id="categoriesGrid">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- FEATURED PRODUCTS -->
+<div class="section">
+  <div class="section-header">
+    <div>
+      <h2 class="section-title">Sản phẩm <span>nổi bật</span></h2>
+      <p class="section-sub">Được khách hàng yêu thích nhất</p>
+    </div>
+    <a href="pages/products.html" class="see-all">Xem tất cả →</a>
+  </div>
+  <div class="products-grid" id="featuredGrid">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- BANNER -->
+<div style="padding:0 5%;max-width:1280px;margin:0 auto 4rem">
+  <div style="background:linear-gradient(135deg,#1a1408,#1e1a0e);border:1px solid var(--border);border-radius:var(--radius-lg);padding:3rem;text-align:center">
+    <p style="font-size:0.8rem;color:var(--gold);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.8rem">Ưu đãi đặc biệt</p>
+    <h2 style="font-family:'Playfair Display',serif;font-size:2rem;margin-bottom:0.8rem">Giảm đến <span style="color:var(--gold)">20%</span> cho đơn hàng đầu tiên</h2>
+    <p style="color:var(--muted);margin-bottom:1.5rem">Đăng ký tài khoản ngay hôm nay để nhận ưu đãi đặc biệt</p>
+    <a href="pages/register.html" class="btn btn-primary">Đăng ký ngay</a>
+  </div>
+</div>
+
+<div id="footer-placeholder"></div>
+<div id="toast-container"></div>
+
+<script src="js/api.js"></script>
+<script src="js/main.js"></script>
+<script>
+  renderHeader('home');
+  renderFooter();
+
+  const categoryIcons = { 1:'🎹', 2:'🎹', 3:'🎸', 4:'🎻' };
+  const categoryColors = { 1:'#c9a84c', 2:'#6bb5c9', 3:'#7ec97a', 4:'#c97a7a' };
+
+  async function loadCategories() {
+    const grid = document.getElementById('categoriesGrid');
+    try {
+      const cats = await Categories.getAll();
+      grid.innerHTML = cats.map(c => `
+        <a href="pages/products.html?category_id=${c.category_id}" class="category-card">
+          <div class="category-icon" style="background:rgba(${hexToRgb(categoryColors[c.category_id]||'#c9a84c')},0.12)">
+            <span style="font-size:1.8rem">${categoryIcons[c.category_id]||'🎵'}</span>
+          </div>
+          <div>
+            <div class="category-name">${c.category_name}</div>
+          </div>
+        </a>`).join('');
+    } catch {
+      grid.innerHTML = `<div class="empty-state"><p>Không thể tải danh mục</p></div>`;
+    }
+  }
+
+  async function loadFeatured() {
+    const grid = document.getElementById('featuredGrid');
+    try {
+      const { products } = await Products.getAll({ limit: 8 });
+      grid.innerHTML = products.map(renderProductCard).join('');
+    } catch {
+      grid.innerHTML = `<div class="empty-state"><p>Không thể tải sản phẩm</p></div>`;
+    }
+  }
+
+  function renderProductCard(p) {
+    const finalPrice = p.price * (1 - (p.discount||0) / 100);
+    return `
+    <div class="product-card">
+      <a href="pages/product-detail.html?id=${p.product_id}">
+        <div class="product-img">
+          ${p.image_url ? `<img src="${p.image_url}" alt="${p.product_name}" onerror="this.parentElement.innerHTML='<div class=placeholder>🎵</div>'"/>` : `<div class="placeholder">🎵</div>`}
+          ${p.discount > 0 ? `<span class="badge-discount">-${p.discount}%</span>` : ''}
+        </div>
+      </a>
+      <div class="product-body">
+        <div class="product-category">${p.category_name||''}</div>
+        <a href="pages/product-detail.html?id=${p.product_id}">
+          <div class="product-name">${p.product_name}</div>
+        </a>
+        <div class="product-brand">${p.brand||''}</div>
+        <div class="product-price">
+          <span class="price-current">${formatPrice(finalPrice)}</span>
+          ${p.discount > 0 ? `<span class="price-original">${formatPrice(p.price)}</span>` : ''}
+        </div>
+      </div>
+      <div class="product-footer">
+        <button class="btn btn-outline btn-sm" onclick="addToCart(${p.product_id}, '${p.product_name}')">🛒 Thêm vào giỏ</button>
+        <a href="pages/product-detail.html?id=${p.product_id}" class="btn btn-primary btn-sm">Xem</a>
+      </div>
+    </div>`;
+  }
+
+  async function addToCart(product_id, name) {
+    if (!Auth.isLoggedIn()) { showToast('Vui lòng đăng nhập!', 'error'); window.location.href='pages/login.html'; return; }
+    try {
+      await Cart.add(product_id);
+      showToast(`Đã thêm "${name}" vào giỏ hàng!`, 'success');
+      updateCartBadge();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  function hexToRgb(hex) {
+    const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return r ? `${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}` : '201,168,76';
+  }
+
+  loadCategories();
+  loadFeatured();
+  
+</script>
+
+</body>
+</html>
+<script src="js/api.js"></script>
+<script src="js/main.js"></script>

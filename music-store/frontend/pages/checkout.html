@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Đặt hàng — MusicStore</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<div class="section" style="padding-top:2rem">
+  <h2 class="section-title" style="margin-bottom:1.5rem">Đặt <span>hàng</span></h2>
+
+  <div style="display:grid;grid-template-columns:1fr 380px;gap:2rem;align-items:start" id="checkoutLayout">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<div id="footer-placeholder"></div>
+<div id="toast-container"></div>
+
+<script src="../js/api.js"></script>
+<script src="../js/main.js"></script>
+<script>
+  renderHeader('');
+  renderFooter();
+
+  if (!Auth.isLoggedIn()) {
+    window.location.href = 'login.html?redirect=' + encodeURIComponent(location.href);
+  }
+
+  let cartItems = [];
+  const user = Auth.getUser();
+
+  async function loadCheckout() {
+    try {
+      cartItems = await Cart.get();
+
+      if (!cartItems.length) {
+        window.location.href = 'cart.html'; return;
+      }
+
+      const total = cartItems.reduce((sum, item) => {
+        return sum + item.price * (1 - (item.discount||0)/100) * item.quantity;
+      }, 0);
+
+      document.getElementById('checkoutLayout').innerHTML = `
+      <!-- FORM THÔNG TIN -->
+      <div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1rem">
+          <h3 style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:1.2rem">Thông tin giao hàng</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="form-group">
+              <label class="form-label">Họ và tên *</label>
+              <input type="text" class="form-input" id="receiverName" value="${user?.full_name||''}" placeholder="Nguyễn Văn A"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Số điện thoại *</label>
+              <input type="tel" class="form-input" id="receiverPhone" placeholder="0912345678"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Địa chỉ giao hàng *</label>
+            <input type="text" class="form-input" id="shippingAddress" placeholder="123 Đường ABC, Quận 1, TP.HCM"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ghi chú</label>
+            <textarea class="form-input" id="note" rows="2" placeholder="Ghi chú cho đơn hàng..."></textarea>
+          </div>
+        </div>
+
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem">
+          <h3 style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:1.2rem">Phương thức thanh toán</h3>
+          <div style="display:flex;flex-direction:column;gap:0.7rem">
+            <label style="display:flex;align-items:center;gap:0.8rem;padding:0.9rem 1rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer" id="paymentCOD">
+              <input type="radio" name="payment" value="cod" checked onchange="selectPayment('cod')"/>
+              <span>💵</span>
+              <div><div style="font-weight:500">Thanh toán khi nhận hàng (COD)</div><div style="font-size:0.78rem;color:var(--muted)">Trả tiền mặt khi nhận hàng</div></div>
+            </label>
+            <label style="display:flex;align-items:center;gap:0.8rem;padding:0.9rem 1rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer" id="paymentBanking">
+              <input type="radio" name="payment" value="banking" onchange="selectPayment('banking')"/>
+              <span>🏦</span>
+              <div><div style="font-weight:500">Chuyển khoản ngân hàng</div><div style="font-size:0.78rem;color:var(--muted)">Chuyển khoản trước khi giao hàng</div></div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- TÓM TẮT ĐƠN HÀNG -->
+      <div class="order-summary" style="position:sticky;top:88px">
+        <h3>Đơn hàng của bạn</h3>
+        <div style="margin-bottom:1rem">
+          ${cartItems.map(item => {
+            const price = item.price * (1 - (item.discount||0)/100);
+            return `
+            <div style="display:flex;justify-content:space-between;font-size:0.85rem;padding:0.5rem 0;border-bottom:1px solid var(--border)">
+              <span style="color:var(--muted)">${item.product_name} <strong style="color:var(--cream)">x${item.quantity}</strong></span>
+              <span style="color:var(--gold)">${formatPrice(price * item.quantity)}</span>
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="summary-row"><span class="label">Tạm tính</span><span>${formatPrice(total)}</span></div>
+        <div class="summary-row"><span class="label">Phí vận chuyển</span><span style="color:var(--green)">Miễn phí</span></div>
+        <div class="summary-row summary-total">
+          <span class="label">Tổng cộng</span>
+          <span class="value">${formatPrice(total)}</span>
+        </div>
+        <button class="btn btn-primary btn-block" style="margin-top:1.2rem" id="orderBtn" onclick="placeOrder()">
+          ✓ Xác nhận đặt hàng
+        </button>
+        <a href="cart.html" class="btn btn-outline btn-block" style="margin-top:0.6rem">← Quay lại giỏ hàng</a>
+      </div>`;
+    } catch(e) {
+      showToast(e.message, 'error');
+    }
+  }
+
+  function selectPayment(method) {
+    document.getElementById('paymentCOD').style.borderColor     = method==='cod'     ? 'var(--gold)' : 'var(--border)';
+    document.getElementById('paymentBanking').style.borderColor = method==='banking' ? 'var(--gold)' : 'var(--border)';
+  }
+
+  async function placeOrder() {
+    const receiverName    = document.getElementById('receiverName').value.trim();
+    const receiverPhone   = document.getElementById('receiverPhone').value.trim();
+    const shippingAddress = document.getElementById('shippingAddress').value.trim();
+    const note            = document.getElementById('note').value.trim();
+    const paymentMethod   = document.querySelector('input[name="payment"]:checked').value;
+
+    if (!receiverName || !receiverPhone || !shippingAddress) {
+      showToast('Vui lòng điền đầy đủ thông tin giao hàng!', 'error'); return;
+    }
+
+    const btn = document.getElementById('orderBtn');
+    btn.disabled = true; btn.textContent = 'Đang đặt hàng...';
+
+    try {
+      const res = await Orders.create({
+        receiver_name:    receiverName,
+        receiver_phone:   receiverPhone,
+        shipping_address: shippingAddress,
+        note,
+        payment_method:   paymentMethod,
+      });
+
+      showToast('Đặt hàng thành công! 🎉', 'success');
+      updateCartBadge();
+      setTimeout(() => window.location.href = `order-success.html?id=${res.order_id}`, 1000);
+    } catch(e) {
+      showToast(e.message, 'error');
+      btn.disabled = false; btn.textContent = '✓ Xác nhận đặt hàng';
+    }
+  }
+
+  loadCheckout();
+</script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tài khoản của tôi — MusicStore</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<div class="section" style="padding-top:2rem;max-width:860px">
+
+  <!-- THÔNG TIN TÀI KHOẢN -->
+  <div style="display:grid;grid-template-columns:280px 1fr;gap:1.5rem;align-items:start">
+
+    <!-- SIDEBAR TÀI KHOẢN -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;text-align:center">
+      <!-- AVATAR -->
+      <div style="width:80px;height:80px;border-radius:50%;background:var(--gold-dim);border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;color:var(--gold-light);margin:0 auto 1rem" id="avatarEl">?</div>
+      <div style="font-weight:600;font-size:1.05rem;margin-bottom:0.2rem" id="nameEl">...</div>
+      <div style="font-size:0.82rem;color:var(--muted);margin-bottom:0.3rem" id="emailEl">...</div>
+      <div id="roleEl" style="margin-bottom:1.2rem"></div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:1.2rem"/>
+
+      <!-- MENU -->
+      <div style="display:flex;flex-direction:column;gap:0.4rem;text-align:left">
+        <a href="profile.html" style="display:flex;align-items:center;gap:0.7rem;padding:0.6rem 0.8rem;border-radius:var(--radius);background:rgba(201,168,76,0.08);color:var(--gold);font-size:0.88rem;font-weight:500">
+          👤 Thông tin tài khoản
+        </a>
+        <a href="orders.html" style="display:flex;align-items:center;gap:0.7rem;padding:0.6rem 0.8rem;border-radius:var(--radius);color:var(--muted);font-size:0.88rem;transition:all 0.2s" onmouseover="this.style.color='var(--cream)';this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.color='var(--muted)';this.style.background='none'">
+          📦 Đơn hàng của tôi
+        </a>
+        <a id="adminLink" href="admin/index.html" style="display:none;align-items:center;gap:0.7rem;padding:0.6rem 0.8rem;border-radius:var(--radius);color:var(--muted);font-size:0.88rem;transition:all 0.2s" onmouseover="this.style.color='var(--cream)';this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.color='var(--muted)';this.style.background='none'">
+          ⚙️ Trang quản trị
+        </a>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:0.4rem 0"/>
+
+        <!-- CHUYỂN TÀI KHOẢN -->
+        <a href="login.html" style="display:flex;align-items:center;gap:0.7rem;padding:0.6rem 0.8rem;border-radius:var(--radius);color:var(--muted);font-size:0.88rem;transition:all 0.2s" onmouseover="this.style.color='var(--gold)';this.style.background='rgba(201,168,76,0.06)'" onmouseout="this.style.color='var(--muted)';this.style.background='none'">
+          🔄 Đăng nhập tài khoản khác
+        </a>
+        <button onclick="confirmLogout()" style="display:flex;align-items:center;gap:0.7rem;padding:0.6rem 0.8rem;border-radius:var(--radius);color:var(--muted);font-size:0.88rem;background:none;border:none;width:100%;text-align:left;cursor:pointer;transition:all 0.2s" onmouseover="this.style.color='var(--red)';this.style.background='rgba(224,85,85,0.06)'" onmouseout="this.style.color='var(--muted)';this.style.background='none'">
+          ⎋ Đăng xuất
+        </button>
+      </div>
+    </div>
+
+    <!-- NỘI DUNG CHÍNH -->
+    <div>
+      <!-- THÔNG TIN CÁ NHÂN -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+          <h3 style="font-family:'Playfair Display',serif;font-size:1.1rem">Thông tin cá nhân</h3>
+          <button class="btn btn-outline btn-sm" onclick="toggleEdit()">✏️ Chỉnh sửa</button>
+        </div>
+
+        <!-- HIỂN THỊ -->
+        <div id="viewMode">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem" id="profileView">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <!-- CHỈNH SỬA -->
+        <div id="editMode" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="form-group">
+              <label class="form-label">Họ và tên</label>
+              <input type="text" class="form-input" id="editName"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Số điện thoại</label>
+              <input type="tel" class="form-input" id="editPhone"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Địa chỉ</label>
+            <input type="text" class="form-input" id="editAddress"/>
+          </div>
+          <div style="display:flex;gap:0.8rem;margin-top:0.5rem">
+            <button class="btn btn-primary btn-sm" onclick="saveProfile()">Lưu thay đổi</button>
+            <button class="btn btn-outline btn-sm" onclick="toggleEdit()">Hủy</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ĐỔI MẬT KHẨU -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem">
+        <h3 style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:1.2rem">Đổi mật khẩu</h3>
+        <div class="form-group">
+          <label class="form-label">Mật khẩu mới</label>
+          <input type="password" class="form-input" id="newPassword" placeholder="Ít nhất 6 ký tự"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Xác nhận mật khẩu mới</label>
+          <input type="password" class="form-input" id="confirmPassword" placeholder="Nhập lại mật khẩu mới"/>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="changePassword()">Đổi mật khẩu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL XÁC NHẬN ĐĂNG XUẤT -->
+<div id="logoutModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2rem;max-width:380px;width:90%;text-align:center">
+    <div style="font-size:2.5rem;margin-bottom:1rem">⎋</div>
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:0.5rem">Đăng xuất?</h3>
+    <p style="font-size:0.88rem;color:var(--muted);margin-bottom:1.5rem">Bạn có chắc muốn đăng xuất khỏi tài khoản này không?</p>
+    <div style="display:flex;gap:0.8rem;justify-content:center">
+      <button class="btn btn-outline" onclick="closeLogoutModal()">Hủy</button>
+      <button class="btn btn-danger" onclick="Auth.logout()">Đăng xuất</button>
+    </div>
+    <div style="margin-top:1rem">
+      <a href="login.html" style="font-size:0.85rem;color:var(--gold)">🔄 Đăng nhập tài khoản khác</a>
+    </div>
+  </div>
+</div>
+
+<div id="footer-placeholder"></div>
+<div id="toast-container"></div>
+
+<script src="../js/api.js"></script>
+<script src="../js/main.js"></script>
+<script>
+  renderHeader('');
+  renderFooter();
+
+  if (!Auth.isLoggedIn()) window.location.href = 'login.html';
+
+  let profileData = null;
+
+  async function loadProfile() {
+    try {
+      profileData = await Auth.profile();
+      const user  = profileData;
+
+      // Sidebar
+      document.getElementById('avatarEl').textContent = user.full_name?.[0]?.toUpperCase() || 'U';
+      document.getElementById('nameEl').textContent   = user.full_name;
+      document.getElementById('emailEl').textContent  = user.email;
+      document.getElementById('roleEl').innerHTML     = user.role === 'admin'
+        ? `<span style="background:rgba(201,168,76,0.12);color:var(--gold);font-size:0.75rem;padding:0.2rem 0.7rem;border-radius:999px;font-weight:600">Quản trị viên</span>`
+        : `<span style="background:rgba(76,175,128,0.12);color:var(--green);font-size:0.75rem;padding:0.2rem 0.7rem;border-radius:999px;font-weight:600">Khách hàng</span>`;
+
+      if (user.role === 'admin') {
+        document.getElementById('adminLink').style.display = 'flex';
+      }
+
+      // Profile view
+      document.getElementById('profileView').innerHTML = [
+        { label: 'Họ và tên',      value: user.full_name || '—' },
+        { label: 'Email',          value: user.email },
+        { label: 'Số điện thoại',  value: user.phone || '—' },
+        { label: 'Vai trò',        value: user.role === 'admin' ? 'Quản trị viên' : 'Khách hàng' },
+        { label: 'Địa chỉ',        value: user.address || '—' },
+        { label: 'Ngày tạo',       value: new Date(user.created_at).toLocaleDateString('vi-VN') },
+      ].map(item => `
+        <div>
+          <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.3rem">${item.label}</div>
+          <div style="font-size:0.92rem;font-weight:500">${item.value}</div>
+        </div>`).join('');
+
+      // Edit fields
+      document.getElementById('editName').value    = user.full_name || '';
+      document.getElementById('editPhone').value   = user.phone    || '';
+      document.getElementById('editAddress').value = user.address  || '';
+
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  function toggleEdit() {
+    const view = document.getElementById('viewMode');
+    const edit = document.getElementById('editMode');
+    const isEditing = edit.style.display !== 'none';
+    view.style.display = isEditing ? 'block' : 'none';
+    edit.style.display = isEditing ? 'none'  : 'block';
+  }
+
+  async function saveProfile() {
+    const full_name = document.getElementById('editName').value.trim();
+    const phone     = document.getElementById('editPhone').value.trim();
+    const address   = document.getElementById('editAddress').value.trim();
+    try {
+      await api.put('/auth/profile', { full_name, phone, address });
+      // Cập nhật localStorage
+      const user = Auth.getUser();
+      Auth.saveUser(localStorage.getItem('token'), { ...user, full_name, phone, address });
+      showToast('Cập nhật thông tin thành công!', 'success');
+      toggleEdit();
+      loadProfile();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  async function changePassword() {
+    const newPassword     = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    if (!newPassword || newPassword.length < 6) { showToast('Mật khẩu phải có ít nhất 6 ký tự!', 'error'); return; }
+    if (newPassword !== confirmPassword)          { showToast('Mật khẩu xác nhận không khớp!',    'error'); return; }
+    try {
+      await api.put('/auth/change-password', { password: newPassword });
+      showToast('Đổi mật khẩu thành công!', 'success');
+      document.getElementById('newPassword').value     = '';
+      document.getElementById('confirmPassword').value = '';
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  function confirmLogout() {
+    document.getElementById('logoutModal').style.display = 'flex';
+  }
+  function closeLogoutModal() {
+    document.getElementById('logoutModal').style.display = 'none';
+  }
+
+  loadProfile();
+</script>
+</body>
+</html>
