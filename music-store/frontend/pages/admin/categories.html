@@ -5,30 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Quản lý danh mục — Admin</title>
   <link rel="stylesheet" href="admin.css"/>
+  <style>
+    .cat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:1rem; }
+    .cat-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; transition:all 0.2s; }
+    .cat-card:hover { border-color:rgba(201,168,76,0.4); transform:translateY(-3px); }
+    .cat-img { aspect-ratio:16/9; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:2.5rem; overflow:hidden; }
+    .cat-img img { width:100%; height:100%; object-fit:cover; }
+    .cat-body { padding:1rem; }
+    .cat-name { font-weight:600; margin-bottom:0.3rem; }
+    .cat-desc { font-size:0.8rem; color:var(--muted); margin-bottom:0.8rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .cat-actions { display:flex; gap:0.5rem; }
+    .upload-zone { border:2px dashed var(--border); border-radius:var(--radius); padding:1.2rem; text-align:center; cursor:pointer; transition:all 0.2s; position:relative; background:var(--bg3); }
+    .upload-zone:hover { border-color:var(--gold); background:rgba(201,168,76,0.04); }
+    .upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .img-preview { width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:var(--radius); margin-top:0.5rem; display:none; }
+  </style>
 </head>
 <body>
-
 <div id="sidebar-placeholder"></div>
-
 <main class="admin-main">
   <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
     <div><h1>Danh mục</h1><p>Quản lý danh mục nhạc cụ</p></div>
     <button class="btn btn-primary" onclick="openModal()">+ Thêm danh mục</button>
   </div>
-
-  <div class="admin-table-wrap">
-    <table>
-      <thead>
-        <tr><th>ID</th><th>Tên danh mục</th><th>Mô tả</th><th>Ngày tạo</th><th>Thao tác</th></tr>
-      </thead>
-      <tbody id="categoriesBody">
-        <tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr>
-      </tbody>
-    </table>
+  <div class="cat-grid" id="catGrid">
+    <div class="loading" style="grid-column:1/-1"><div class="spinner"></div></div>
   </div>
 </main>
 
-<!-- MODAL THÊM/SỬA -->
+<!-- MODAL -->
 <div class="modal-overlay" id="catModal" style="display:none">
   <div class="modal" style="max-width:480px">
     <div class="modal-header">
@@ -45,8 +50,14 @@
       <textarea class="form-textarea" id="fDesc" placeholder="Mô tả danh mục..."></textarea>
     </div>
     <div class="form-group">
-      <label class="form-label">URL hình ảnh</label>
-      <input type="text" class="form-input" id="fImage" placeholder="/images/categories/..."/>
+      <label class="form-label">Hình ảnh danh mục</label>
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fImage" accept=".jpg,.jpeg,.png,.webp" onchange="previewImg(this)"/>
+        <div>🖼️</div>
+        <p style="font-size:0.82rem;color:var(--muted);margin:0.3rem 0 0">Nhấn để chọn ảnh (JPG, PNG)</p>
+      </div>
+      <img id="imgPreview" class="img-preview" alt="preview"/>
+      <div id="currentImg" style="display:none;margin-top:0.5rem;font-size:0.8rem;color:var(--muted)"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">Hủy</button>
@@ -60,37 +71,44 @@
 <script src="sidebar.js"></script>
 <script>
   renderSidebar('categories');
+  const catIcons = { 1:'🎹', 2:'🎹', 3:'🎸', 4:'🎻' };
   let allCategories = [];
 
   async function loadCategories() {
     try {
       allCategories = await Categories.getAll();
-      const tbody = document.getElementById('categoriesBody');
-
+      const grid = document.getElementById('catGrid');
       if (!allCategories.length) {
-        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">📂</div><p>Chưa có danh mục nào</p></div></td></tr>`;
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">📂</div><p>Chưa có danh mục</p></div>';
         return;
       }
-
-      tbody.innerHTML = allCategories.map(c => `
-        <tr>
-          <td style="color:var(--gold);font-weight:600">#${c.category_id}</td>
-          <td>
-            <div style="display:flex;align-items:center;gap:0.8rem">
-              ${c.image_url
-                ? `<img src="${c.image_url}" style="width:40px;height:40px;border-radius:var(--radius);object-fit:cover" onerror="this.style.display='none'"/>`
-                : `<div style="width:40px;height:40px;border-radius:var(--radius);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:1.2rem">📂</div>`}
-              <span style="font-weight:500">${c.category_name}</span>
+      grid.innerHTML = allCategories.map(c => `
+        <div class="cat-card">
+          <div class="cat-img">
+            ${c.image_url
+              ? '<img src="'+c.image_url+'" alt="'+c.category_name+'" onerror="this.style.display=\'none\'"/>'
+              : (catIcons[c.category_id]||'📂')}
+          </div>
+          <div class="cat-body">
+            <div class="cat-name">${c.category_name}</div>
+            <div class="cat-desc">${c.description||'Chưa có mô tả'}</div>
+            <div class="cat-actions">
+              <button class="btn btn-outline btn-sm" style="flex:1" onclick="editCategory(${c.category_id})">✏️ Sửa</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteCategory(${c.category_id},'${c.category_name}')">🗑</button>
             </div>
-          </td>
-          <td style="color:var(--muted);font-size:0.85rem">${c.description || '—'}</td>
-          <td style="color:var(--muted);font-size:0.82rem">${new Date(c.created_at).toLocaleDateString('vi-VN')}</td>
-          <td style="display:flex;gap:0.4rem">
-            <button class="btn btn-outline btn-sm" onclick="editCategory(${c.category_id})">✏️ Sửa</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteCategory(${c.category_id}, '${c.category_name}')">🗑</button>
-          </td>
-        </tr>`).join('');
+          </div>
+        </div>`).join('');
     } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  function previewImg(input) {
+    const preview = document.getElementById('imgPreview');
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = e => { preview.src = e.target.result; preview.style.display = 'block'; };
+      reader.readAsDataURL(input.files[0]);
+      document.getElementById('uploadZone').style.display = 'none';
+    }
   }
 
   function openModal(c = null) {
@@ -98,7 +116,16 @@
     document.getElementById('editId').value  = c?.category_id || '';
     document.getElementById('fName').value   = c?.category_name || '';
     document.getElementById('fDesc').value   = c?.description || '';
-    document.getElementById('fImage').value  = c?.image_url || '';
+    document.getElementById('fImage').value  = '';
+    document.getElementById('imgPreview').style.display = 'none';
+    document.getElementById('uploadZone').style.display = 'block';
+
+    const currentImg = document.getElementById('currentImg');
+    if (c?.image_url) {
+      currentImg.style.display = 'block';
+      currentImg.innerHTML = '📷 Ảnh hiện tại: <a href="'+c.image_url+'" target="_blank" style="color:var(--gold)">Xem ảnh</a>';
+    } else { currentImg.style.display = 'none'; }
+
     document.getElementById('catModal').style.display = 'flex';
   }
 
@@ -111,23 +138,30 @@
 
   async function saveCategory() {
     const id   = document.getElementById('editId').value;
-    const data = {
-      category_name: document.getElementById('fName').value.trim(),
-      description:   document.getElementById('fDesc').value.trim(),
-      image_url:     document.getElementById('fImage').value.trim(),
-    };
-    if (!data.category_name) { showToast('Vui lòng nhập tên danh mục!', 'error'); return; }
+    const name = document.getElementById('fName').value.trim();
+    const desc = document.getElementById('fDesc').value.trim();
+    const file = document.getElementById('fImage').files[0];
+
+    if (!name) { showToast('Vui lòng nhập tên danh mục!', 'error'); return; }
 
     const btn = document.getElementById('saveBtn');
     btn.disabled = true; btn.textContent = 'Đang lưu...';
+
     try {
-      if (id) {
-        await api.put('/categories/' + id, data);
-        showToast('Cập nhật danh mục thành công!', 'success');
-      } else {
-        await api.post('/categories', data);
-        showToast('Thêm danh mục thành công!', 'success');
-      }
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('category_name', name);
+      formData.append('description',   desc);
+      if (file) formData.append('image', file);
+
+      const url    = id ? 'http://localhost:5000/api/categories/' + id : 'http://localhost:5000/api/categories';
+      const method = id ? 'PUT' : 'POST';
+
+      const res  = await fetch(url, { method, headers: { 'Authorization': 'Bearer ' + token }, body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+
+      showToast(id ? 'Cập nhật thành công!' : 'Thêm danh mục thành công!', 'success');
       closeModal();
       await loadCategories();
     } catch(e) { showToast(e.message, 'error'); }
@@ -135,7 +169,7 @@
   }
 
   async function deleteCategory(id, name) {
-    if (!confirm(`Xóa danh mục "${name}"?\nCác sản phẩm thuộc danh mục này sẽ bị ảnh hưởng!`)) return;
+    if (!confirm('Xóa danh mục "'+name+'"?')) return;
     try {
       await api.delete('/categories/' + id);
       showToast('Đã xóa danh mục!', 'success');

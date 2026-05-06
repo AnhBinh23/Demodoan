@@ -14,7 +14,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Phục vụ ảnh tĩnh
 app.use('/images', express.static(path.join(__dirname, 'public/images')));
-
+app.use('/images', express.static(path.join(__dirname, 'public/images')));
+app.use('/sheets', express.static(path.join(__dirname, 'public/sheets')));
 // Phục vụ Frontend
 app.use(express.static(path.join(__dirname, '../frontend')));
 
