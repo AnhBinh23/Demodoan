@@ -5,6 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Quản lý sản phẩm — Admin</title>
   <link rel="stylesheet" href="admin.css"/>
+  <style>
+    .upload-zone {
+      border: 2px dashed var(--border); border-radius: var(--radius);
+      padding: 1.2rem; text-align: center; cursor: pointer;
+      transition: all 0.2s; position: relative; background: var(--bg3);
+    }
+    .upload-zone:hover { border-color: var(--gold); background: rgba(201,168,76,0.04); }
+    .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .img-preview-wrap { position: relative; margin-top: 0.6rem; }
+    .img-preview { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: var(--radius); display: none; }
+    .remove-img {
+      position: absolute; top: 6px; right: 6px;
+      background: rgba(0,0,0,0.6); border: none; color: #fff;
+      border-radius: 50%; width: 24px; height: 24px;
+      font-size: 0.75rem; cursor: pointer; display: none;
+      align-items: center; justify-content: center;
+    }
+  </style>
 </head>
 <body>
 
@@ -37,7 +55,7 @@
   </div>
 </main>
 
-<!-- MODAL THÊM/SỬA SẢN PHẨM -->
+<!-- MODAL THÊM/SỬA -->
 <div class="modal-overlay" id="productModal" style="display:none">
   <div class="modal">
     <div class="modal-header">
@@ -45,6 +63,7 @@
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <input type="hidden" id="editId"/>
+
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Tên sản phẩm *</label>
@@ -55,6 +74,7 @@
         <input type="text" class="form-input" id="fBrand" placeholder="Yamaha"/>
       </div>
     </div>
+
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Danh mục *</label>
@@ -65,6 +85,7 @@
         <input type="number" class="form-input" id="fPrice" placeholder="12500000"/>
       </div>
     </div>
+
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Giảm giá (%)</label>
@@ -75,14 +96,42 @@
         <input type="number" class="form-input" id="fStock" placeholder="10"/>
       </div>
     </div>
+
     <div class="form-group">
       <label class="form-label">Mô tả</label>
       <textarea class="form-textarea" id="fDesc" placeholder="Mô tả sản phẩm..."></textarea>
     </div>
+
+    <!-- UPLOAD ẢNH -->
     <div class="form-group">
-      <label class="form-label">URL hình ảnh</label>
-      <input type="text" class="form-input" id="fImage" placeholder="/images/products/..."/>
+      <label class="form-label">Hình ảnh sản phẩm</label>
+
+      <!-- Zone upload từ máy -->
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fImageFile" accept=".jpg,.jpeg,.png,.webp" onchange="previewImage(this)"/>
+        <div style="font-size:1.8rem;margin-bottom:0.3rem">📷</div>
+        <p style="font-size:0.85rem;color:var(--muted);margin:0">
+          <span style="color:var(--gold);font-weight:500">Nhấn để chọn ảnh</span> từ máy tính
+        </p>
+        <p style="font-size:0.75rem;color:var(--muted);margin:0.2rem 0 0">JPG, PNG, WEBP — Tối đa 5MB</p>
+      </div>
+
+      <!-- Preview ảnh -->
+      <div class="img-preview-wrap">
+        <img id="imgPreview" class="img-preview" alt="preview"/>
+        <button class="remove-img" id="removeImgBtn" onclick="removeImage()">✕</button>
+      </div>
+
+      <!-- Hoặc nhập URL -->
+      <div style="display:flex;align-items:center;gap:0.8rem;margin-top:0.8rem">
+        <div style="height:1px;background:var(--border);flex:1"></div>
+        <span style="font-size:0.78rem;color:var(--muted)">hoặc</span>
+        <div style="height:1px;background:var(--border);flex:1"></div>
+      </div>
+      <input type="text" class="form-input" id="fImageUrl" placeholder="Dán URL ảnh từ internet..."
+        style="margin-top:0.6rem" oninput="previewFromUrl(this.value)"/>
     </div>
+
     <div class="form-group" id="statusGroup" style="display:none">
       <label class="form-label">Trạng thái</label>
       <select class="form-select" id="fActive">
@@ -90,6 +139,7 @@
         <option value="0">Ngừng bán</option>
       </select>
     </div>
+
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">Hủy</button>
       <button class="btn btn-primary" id="saveBtn" onclick="saveProduct()">Lưu sản phẩm</button>
@@ -106,9 +156,9 @@
 
   async function loadData() {
     try {
-      [categories] = await Promise.all([Categories.getAll()]);
-      const catFilter = document.getElementById('catFilter');
-      const fCategory = document.getElementById('fCategory');
+      categories = await Categories.getAll();
+      const catFilter  = document.getElementById('catFilter');
+      const fCategory  = document.getElementById('fCategory');
       categories.forEach(c => {
         catFilter.innerHTML += `<option value="${c.category_id}">${c.category_name}</option>`;
         fCategory.innerHTML += `<option value="${c.category_id}">${c.category_name}</option>`;
@@ -125,10 +175,19 @@
 
   function renderTable(products) {
     const tbody = document.getElementById('productsBody');
-    if (!products.length) { tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🎵</div><p>Không có sản phẩm nào</p></div></td></tr>`; return; }
+    if (!products.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🎵</div><p>Không có sản phẩm</p></div></td></tr>`;
+      return;
+    }
     tbody.innerHTML = products.map(p => `
       <tr>
-        <td><div class="td-img">${p.image_url ? `<img src="${p.image_url}" alt="" onerror="this.parentElement.innerHTML='🎵'"/>` : '🎵'}</div></td>
+        <td>
+          <div class="td-img" style="overflow:hidden">
+            ${p.image_url
+              ? `<img src="${p.image_url}" alt="" onerror="this.parentElement.innerHTML='🎵'" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius)"/>`
+              : '🎵'}
+          </div>
+        </td>
         <td><div style="font-weight:500">${p.product_name}</div><div style="font-size:0.78rem;color:var(--muted)">${p.brand||''}</div></td>
         <td style="color:var(--muted)">${p.category_name}</td>
         <td style="color:var(--gold);font-weight:600">${formatPrice(p.price)}</td>
@@ -136,7 +195,7 @@
         <td><span class="badge ${p.is_active?'badge-active':'badge-inactive'}">${p.is_active?'Đang bán':'Ngừng bán'}</span></td>
         <td style="display:flex;gap:0.4rem;align-items:center">
           <button class="btn btn-outline btn-sm" onclick="editProduct(${p.product_id})">✏️ Sửa</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.product_id}, '${p.product_name}')">🗑</button>
+          <button class="btn btn-danger btn-sm"  onclick="deleteProduct(${p.product_id},'${p.product_name.replace(/'/g,"\\'")}')">🗑</button>
         </td>
       </tr>`).join('');
   }
@@ -150,56 +209,129 @@
     ));
   }
 
+  // Xem trước ảnh từ file máy
+  function previewImage(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = e => {
+      const preview = document.getElementById('imgPreview');
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+      document.getElementById('removeImgBtn').style.display = 'flex';
+      document.getElementById('uploadZone').style.display   = 'none';
+      document.getElementById('fImageUrl').value = '';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Xem trước ảnh từ URL
+  function previewFromUrl(url) {
+    if (!url) return;
+    const preview = document.getElementById('imgPreview');
+    preview.src = url;
+    preview.style.display = 'block';
+    document.getElementById('removeImgBtn').style.display = 'flex';
+    document.getElementById('uploadZone').style.display   = 'none';
+    document.getElementById('fImageFile').value = '';
+  }
+
+  // Xóa ảnh đã chọn
+  function removeImage() {
+    document.getElementById('imgPreview').style.display     = 'none';
+    document.getElementById('imgPreview').src               = '';
+    document.getElementById('removeImgBtn').style.display   = 'none';
+    document.getElementById('uploadZone').style.display     = 'block';
+    document.getElementById('fImageFile').value             = '';
+    document.getElementById('fImageUrl').value              = '';
+  }
+
   function openModal(p = null) {
-    document.getElementById('modalTitle').textContent = p ? 'Sửa sản phẩm' : 'Thêm sản phẩm';
-    document.getElementById('editId').value       = p?.product_id || '';
-    document.getElementById('fName').value        = p?.product_name || '';
-    document.getElementById('fBrand').value       = p?.brand || '';
-    document.getElementById('fCategory').value    = p?.category_id || '';
-    document.getElementById('fPrice').value       = p?.price || '';
-    document.getElementById('fDiscount').value    = p?.discount || 0;
-    document.getElementById('fStock').value       = p?.stock || 0;
-    document.getElementById('fDesc').value        = p?.description || '';
-    document.getElementById('fImage').value       = p?.image_url || '';
-    document.getElementById('fActive').value      = p?.is_active ?? 1;
+    document.getElementById('modalTitle').textContent  = p ? 'Sửa sản phẩm' : 'Thêm sản phẩm';
+    document.getElementById('editId').value            = p?.product_id || '';
+    document.getElementById('fName').value             = p?.product_name || '';
+    document.getElementById('fBrand').value            = p?.brand || '';
+    document.getElementById('fCategory').value         = p?.category_id || '';
+    document.getElementById('fPrice').value            = p?.price || '';
+    document.getElementById('fDiscount').value         = p?.discount || 0;
+    document.getElementById('fStock').value            = p?.stock || 0;
+    document.getElementById('fDesc').value             = p?.description || '';
+    document.getElementById('fActive').value           = p?.is_active ?? 1;
     document.getElementById('statusGroup').style.display = p ? 'block' : 'none';
+
+    // Reset ảnh
+    removeImage();
+
+    // Nếu đang sửa và có ảnh cũ thì hiện lên
+    if (p?.image_url) {
+      document.getElementById('fImageUrl').value = p.image_url;
+      previewFromUrl(p.image_url);
+    }
+
     document.getElementById('productModal').style.display = 'flex';
   }
+
   function closeModal() { document.getElementById('productModal').style.display = 'none'; }
 
-  async function editProduct(id) {
+  function editProduct(id) {
     const p = allProducts.find(x => x.product_id === id);
     if (p) openModal(p);
   }
 
   async function saveProduct() {
-    const id   = document.getElementById('editId').value;
-    const data = {
-      category_id:  parseInt(document.getElementById('fCategory').value),
-      product_name: document.getElementById('fName').value.trim(),
-      brand:        document.getElementById('fBrand').value.trim(),
-      price:        parseFloat(document.getElementById('fPrice').value),
-      discount:     parseInt(document.getElementById('fDiscount').value)||0,
-      stock:        parseInt(document.getElementById('fStock').value)||0,
-      description:  document.getElementById('fDesc').value,
-      image_url:    document.getElementById('fImage').value,
-      is_active:    parseInt(document.getElementById('fActive').value),
-    };
-    if (!data.product_name || !data.price) { showToast('Vui lòng điền đủ thông tin!', 'error'); return; }
-    const btn = document.getElementById('saveBtn');
+    const id       = document.getElementById('editId').value;
+    const fileInput = document.getElementById('fImageFile');
+    const imageUrl  = document.getElementById('fImageUrl').value.trim();
+    const btn       = document.getElementById('saveBtn');
+
+    if (!document.getElementById('fName').value.trim()) {
+      showToast('Vui lòng nhập tên sản phẩm!', 'error'); return;
+    }
+
     btn.disabled = true; btn.textContent = 'Đang lưu...';
+
     try {
-      if (id) { await Products.update(id, data); showToast('Cập nhật thành công!', 'success'); }
-      else     { await Products.create(data);     showToast('Thêm sản phẩm thành công!', 'success'); }
-      closeModal(); await loadProducts();
+      const token = localStorage.getItem('token');
+
+      // Dùng FormData để hỗ trợ upload file
+      const formData = new FormData();
+      formData.append('category_id',   document.getElementById('fCategory').value);
+      formData.append('product_name',  document.getElementById('fName').value.trim());
+      formData.append('brand',         document.getElementById('fBrand').value.trim());
+      formData.append('price',         document.getElementById('fPrice').value);
+      formData.append('discount',      document.getElementById('fDiscount').value || 0);
+      formData.append('stock',         document.getElementById('fStock').value || 0);
+      formData.append('description',   document.getElementById('fDesc').value);
+      formData.append('is_active',     document.getElementById('fActive').value);
+
+      // Ưu tiên file upload, nếu không có thì dùng URL
+      if (fileInput.files && fileInput.files[0]) {
+        formData.append('image', fileInput.files[0]);
+      } else if (imageUrl) {
+        formData.append('image_url', imageUrl);
+      }
+
+      const url    = id ? `http://localhost:5000/api/products/${id}` : 'http://localhost:5000/api/products';
+      const method = id ? 'PUT' : 'POST';
+
+      const res  = await fetch(url, { method, headers: { 'Authorization': 'Bearer ' + token }, body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+
+      showToast(id ? 'Cập nhật thành công!' : 'Thêm sản phẩm thành công!', 'success');
+      closeModal();
+      await loadProducts();
     } catch(e) { showToast(e.message, 'error'); }
     finally { btn.disabled = false; btn.textContent = 'Lưu sản phẩm'; }
   }
 
   async function deleteProduct(id, name) {
     if (!confirm(`Xóa sản phẩm "${name}"?`)) return;
-    try { await Products.delete(id); showToast('Đã xóa sản phẩm!', 'success'); await loadProducts(); }
-    catch(e) { showToast(e.message, 'error'); }
+    try {
+      await Products.delete(id);
+      showToast('Đã xóa sản phẩm!', 'success');
+      await loadProducts();
+    } catch(e) { showToast(e.message, 'error'); }
   }
 
   loadData();

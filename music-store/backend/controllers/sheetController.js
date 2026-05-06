@@ -1,6 +1,7 @@
-const db   = require('../config/db');
-const path = require('path');
-const fs   = require('fs');
+const db       = require('../config/db');
+const path     = require('path');
+const cloudinary = require('cloudinary').v2;
+require('dotenv').config();
 
 const getAllSheets = async (req, res) => {
     try {
@@ -11,59 +12,65 @@ const getAllSheets = async (req, res) => {
         if (instrument) { sql += ' AND instrument = ?'; params.push(instrument); }
         if (difficulty) { sql += ' AND difficulty = ?'; params.push(difficulty); }
         if (search)     { sql += ' AND (title LIKE ? OR composer LIKE ?)'; params.push('%'+search+'%','%'+search+'%'); }
-        const [countResult] = await db.query(sql.replace('SELECT *', 'SELECT COUNT(*) as total'), params);
+        const [countRows] = await db.query(sql.replace('SELECT *', 'SELECT COUNT(*) as total'), params);
         sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
         params.push(parseInt(limit), parseInt(offset));
         const [sheets] = await db.query(sql, params);
-        res.json({ sheets, total: countResult[0].total, page: parseInt(page), total_pages: Math.ceil(countResult[0].total / limit) });
+        res.json({ sheets, total: countRows[0].total, page: parseInt(page), total_pages: Math.ceil(countRows[0].total / limit) });
     } catch(err) { res.status(500).json({ message: 'Lỗi server!', error: err.message }); }
 };
 
 const getSheetById = async (req, res) => {
     try {
         const [sheets] = await db.query('SELECT * FROM sheet_music WHERE sheet_id = ? AND is_active = 1', [req.params.id]);
-        if (!sheets.length) return res.status(404).json({ message: 'Không tìm thấy bản nhạc!' });
+        if (!sheets.length) return res.status(404).json({ message: 'Không tìm thấy!' });
         await db.query('UPDATE sheet_music SET view_count = view_count + 1 WHERE sheet_id = ?', [req.params.id]);
         res.json(sheets[0]);
     } catch(err) { res.status(500).json({ message: 'Lỗi server!', error: err.message }); }
+};
+
+// Upload lên Cloudinary từ buffer
+const uploadToCloudinary = (buffer, folder, resourceType = 'auto') => {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            { folder, resource_type: resourceType },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+            }
+        );
+        stream.end(buffer);
+    });
 };
 
 const createSheet = async (req, res) => {
     try {
         const { title, composer, instrument, difficulty, description, is_free } = req.body;
 
-        if (!req.files || !req.files.sheet_file) {
+        if (!req.files || !req.files['sheet_file']) {
             return res.status(400).json({ message: 'Vui lòng upload file bản nhạc!' });
         }
 
-        const sheetFile = req.files.sheet_file;
-        const ext       = path.extname(sheetFile.name).toLowerCase();
-        const fileType  = ext === '.pdf' ? 'pdf' : 'image';
-        const fileName  = 'sheet_' + Date.now() + ext;
+        // Upload file bản nhạc lên Cloudinary
+        const sheetFile   = req.files['sheet_file'][0];
+        const ext         = path.extname(sheetFile.originalname).toLowerCase();
+        const fileType    = ext === '.pdf' ? 'pdf' : 'image';
+        const sheetResult = await uploadToCloudinary(
+            sheetFile.buffer,
+            'ascent-music/sheets/files',
+            'auto'
+        );
+        const fileUrl = sheetResult.secure_url;
 
-        // Thư mục lưu file
-        const sheetsDir = path.join(__dirname, '../public/sheets');
-        const imgDir    = path.join(__dirname, '../public/images/sheets');
-        if (!fs.existsSync(sheetsDir)) fs.mkdirSync(sheetsDir, { recursive: true });
-        if (!fs.existsSync(imgDir))    fs.mkdirSync(imgDir,    { recursive: true });
-
-        // Lưu file vào đúng thư mục
-        const savePath = fileType === 'pdf'
-            ? path.join(sheetsDir, fileName)
-            : path.join(imgDir, fileName);
-        await sheetFile.mv(savePath);
-
-        const fileUrl = fileType === 'pdf'
-            ? '/sheets/' + fileName
-            : '/images/sheets/' + fileName;
-
-        // Ảnh bìa
+        // Upload ảnh bìa (nếu có)
         let thumbnailUrl = null;
-        if (req.files && req.files.thumbnail) {
-            const thumb     = req.files.thumbnail;
-            const thumbName = 'thumb_' + Date.now() + path.extname(thumb.name);
-            await thumb.mv(path.join(imgDir, thumbName));
-            thumbnailUrl = '/images/sheets/' + thumbName;
+        if (req.files['thumbnail'] && req.files['thumbnail'][0]) {
+            const thumbResult = await uploadToCloudinary(
+                req.files['thumbnail'][0].buffer,
+                'ascent-music/sheets/thumbnails',
+                'image'
+            );
+            thumbnailUrl = thumbResult.secure_url;
         }
 
         const [result] = await db.query(
@@ -93,7 +100,7 @@ const updateSheet = async (req, res) => {
 const deleteSheet = async (req, res) => {
     try {
         await db.query('UPDATE sheet_music SET is_active = 0 WHERE sheet_id = ?', [req.params.id]);
-        res.json({ message: 'Đã xóa bản nhạc!' });
+        res.json({ message: 'Đã xóa!' });
     } catch(err) { res.status(500).json({ message: 'Lỗi server!', error: err.message }); }
 };
 
