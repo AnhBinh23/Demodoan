@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Liên hệ — Ascent-Music</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <style>
+    .contact-grid { display:grid; grid-template-columns:1fr 1fr; gap:2rem; align-items:start; }
+    @media (max-width:768px) { .contact-grid { grid-template-columns:1fr; } }
+    .contact-form-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-lg); padding:2rem; }
+    .contact-form-card h2 { font-family:'Playfair Display',serif; font-size:1.4rem; margin-bottom:0.4rem; }
+    .contact-form-card p { font-size:0.88rem; color:var(--muted); margin-bottom:1.5rem; }
+    .contact-info-card { display:flex; flex-direction:column; gap:1rem; }
+    .info-block { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-lg); padding:1.5rem; }
+    .info-block h3 { font-family:'Playfair Display',serif; font-size:1rem; margin-bottom:1rem; color:var(--cream); }
+    .info-item { display:flex; align-items:center; gap:0.9rem; padding:0.6rem 0; border-bottom:1px solid var(--border); }
+    .info-item:last-child { border-bottom:none; }
+    .info-icon { width:36px; height:36px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+    .info-label { font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; }
+    .info-value { font-size:0.9rem; font-weight:500; color:var(--cream); white-space:nowrap; }
+    .info-value a { color:var(--cream); transition:color 0.2s; }
+    .info-value a:hover { color:var(--gold); }
+    .social-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.7rem; }
+    .social-btn { display:flex; align-items:center; gap:0.7rem; padding:0.7rem 1rem; border-radius:var(--radius); border:1px solid var(--border); background:var(--bg3); color:var(--cream); font-size:0.85rem; font-weight:500; transition:all 0.2s; text-decoration:none; }
+    .social-btn:hover { border-color:var(--gold); color:var(--gold); transform:translateY(-2px); }
+    .map-wrap { border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); height:220px; }
+    .map-wrap iframe { width:100%; height:100%; border:none; }
+    .chat-buttons { display:flex; gap:0.8rem; flex-wrap:wrap; }
+    .chat-btn { display:flex; align-items:center; gap:0.6rem; padding:0.7rem 1.2rem; border-radius:999px; font-size:0.88rem; font-weight:600; text-decoration:none; transition:all 0.2s; border:none; cursor:pointer; }
+    .chat-zalo { background:#0068FF; color:#fff; }
+    .chat-zalo:hover { background:#0055cc; transform:translateY(-2px); }
+    .chat-mess { background:linear-gradient(135deg,#0099FF,#A033FF); color:#fff; }
+    .chat-mess:hover { opacity:0.9; transform:translateY(-2px); }
+    .success-msg { display:none; background:rgba(76,175,128,0.1); border:1px solid var(--green); border-radius:var(--radius); padding:1rem; text-align:center; color:var(--green); font-weight:500; margin-top:1rem; }
+  </style>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<div class="section" style="padding-top:2rem">
+  <div style="text-align:center;margin-bottom:2.5rem">
+    <p style="font-size:0.78rem;color:var(--gold);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:0.5rem">Liên hệ với chúng tôi</p>
+    <h1 style="font-family:'Playfair Display',serif;font-size:clamp(1.6rem,3vw,2.2rem);margin-bottom:0.5rem">
+      Chúng tôi luôn <span style="color:var(--gold)">sẵn sàng</span> hỗ trợ bạn
+    </h1>
+    <p style="color:var(--muted);font-size:0.9rem;max-width:500px;margin:0 auto">
+      Hãy để lại tin nhắn hoặc liên hệ trực tiếp — đội ngũ Ascent-Music sẽ phản hồi trong vòng 24 giờ!
+    </p>
+  </div>
+
+  <div class="contact-grid">
+
+    <!-- CỘT TRÁI: FORM -->
+    <div class="contact-form-card">
+      <h2>Gửi tin nhắn</h2>
+      <p>Điền thông tin bên dưới, chúng tôi sẽ liên hệ lại sớm nhất!</p>
+      <div class="form-group">
+        <label class="form-label">Họ và tên *</label>
+        <input type="text" class="form-input" id="contactName" placeholder="Nguyễn Văn A"/>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" id="contactEmail" placeholder="email@gmail.com"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Số điện thoại</label>
+          <input type="tel" class="form-input" id="contactPhone" placeholder="0912345678"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Chủ đề</label>
+        <select class="form-input" id="contactSubject">
+          <option value="">Chọn chủ đề...</option>
+          <option value="Tư vấn mua hàng">Tư vấn mua hàng</option>
+          <option value="Hỏi về sản phẩm">Hỏi về sản phẩm</option>
+          <option value="Bảo hành / Sửa chữa">Bảo hành / Sửa chữa</option>
+          <option value="Đăng ký học nhạc">Đăng ký học nhạc</option>
+          <option value="Khác">Khác</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nội dung *</label>
+        <textarea class="form-input" id="contactMessage" rows="5" placeholder="Nhập nội dung tin nhắn của bạn..." style="resize:vertical;min-height:120px"></textarea>
+      </div>
+      <button class="btn btn-primary btn-block" id="sendBtn" onclick="sendMessage()" style="font-size:0.95rem">
+        📨 Gửi tin nhắn
+      </button>
+      <div class="success-msg" id="successMsg">
+        🎉 Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi trong vòng 24 giờ.
+      </div>
+    </div>
+
+    <!-- CỘT PHẢI -->
+    <div class="contact-info-card">
+
+      <div class="info-block">
+        <h3>📋 Thông tin liên hệ</h3>
+        <div class="info-item">
+          <div class="info-icon" style="background:rgba(201,168,76,0.1)">📞</div>
+          <div>
+            <div class="info-label">Số điện thoại</div>
+            <div class="info-value"><a href="tel:0333419432">033 341 9432</a></div>
+          </div>
+        </div>
+        <div class="info-item">
+          <div class="info-icon" style="background:rgba(100,149,237,0.1)">✉️</div>
+          <div>
+            <div class="info-label">Email</div>
+            <div class="info-value"><a href="mailto:ascentmusicstudio2026@gmail.com">ascentmusicstudio2026@gmail.com</a></div>
+          </div>
+        </div>
+        <div class="info-item">
+          <div class="info-icon" style="background:rgba(76,175,128,0.1)">📍</div>
+          <div>
+            <div class="info-label">Địa chỉ</div>
+            <div class="info-value">B10B Nam Trung Yên - Trung Hoà, Hanoi</div>
+          </div>
+        </div>
+        <div class="info-item">
+          <div class="info-icon" style="background:rgba(186,85,211,0.1)">🕐</div>
+          <div>
+            <div class="info-label">Giờ làm việc</div>
+            <div class="info-value">8:00 – 21:00 (Thứ 2 – Chủ nhật)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <h3>💬 Chat nhanh</h3>
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem">Nhắn tin trực tiếp để được hỗ trợ ngay!</p>
+        <div class="chat-buttons">
+          <a href="https://zalo.me/0333419432" target="_blank" class="chat-btn chat-zalo">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Icon_of_Zalo.svg" style="width:20px;height:20px" alt="Zalo"/>
+            Chat Zalo
+          </a>
+          <a href="https://www.facebook.com/profile.php?id=61585445690083" target="_blank" class="chat-btn chat-mess">
+            💬 Messenger
+          </a>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <h3>🗺️ Bản đồ</h3>
+        <div class="map-wrap">
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3724.0968444596654!2d105.78900987599836!3d21.02718028062363!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3135ab5f42b34bd3%3A0x66a0e8c2ae475e4a!2sNam%20Trung%20Y%C3%AAn%2C%20C%E1%BA%A7u%20Gi%E1%BA%A5y%2C%20H%C3%A0%20N%E1%BB%99i!5e0!3m2!1svi!2svn!4v1699000000000!5m2!1svi!2svn"
+            allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+          </iframe>
+        </div>
+        <a href="https://maps.google.com/?q=B10B+Nam+Trung+Yen+Trung+Hoa+Hanoi+Vietnam" target="_blank"
+           style="display:inline-flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--gold);margin-top:0.7rem">
+          📍 Xem trên Google Maps →
+        </a>
+      </div>
+
+      <div class="info-block">
+        <h3>🌐 Theo dõi chúng tôi</h3>
+        <div class="social-grid">
+          <a href="https://www.facebook.com/profile.php?id=61585445690083" target="_blank" class="social-btn">
+            <span class="social-icon">📘</span> Facebook
+          </a>
+          <a href="https://youtube.com/@ascentmusic" target="_blank" class="social-btn">
+            <span class="social-icon">📺</span> YouTube
+          </a>
+          <a href="https://tiktok.com/@ascentmusic" target="_blank" class="social-btn">
+            <span class="social-icon">🎵</span> TikTok
+          </a>
+          <a href="https://instagram.com/ascentmusic" target="_blank" class="social-btn">
+            <span class="social-icon">📸</span> Instagram
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="footer-placeholder"></div>
+<div id="toast-container"></div>
+
+<script src="../js/api.js"></script>
+<script src="../js/main.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script>
+  renderHeader('contact');
+  renderFooter();
+
+  async function sendMessage() {
+    const name    = document.getElementById('contactName').value.trim();
+    const email   = document.getElementById('contactEmail').value.trim();
+    const phone   = document.getElementById('contactPhone').value.trim();
+    const subject = document.getElementById('contactSubject').value;
+    const message = document.getElementById('contactMessage').value.trim();
+    const btn     = document.getElementById('sendBtn');
+
+    if (!name)            { showToast('Vui lòng nhập họ tên!', 'error'); return; }
+    if (!message)         { showToast('Vui lòng nhập nội dung!', 'error'); return; }
+    if (!email && !phone) { showToast('Vui lòng nhập email hoặc SĐT!', 'error'); return; }
+
+    btn.disabled = true; btn.textContent = 'Đang gửi...';
+
+    try {
+      await emailjs.send(
+        'service_g3zovbm',
+        'template_go39jfm',
+        {
+          from_name:    name,
+          from_contact: email || phone,
+          subject:      subject || 'Liên hệ từ website',
+          message:      message,
+        },
+        'Ojfx8FoaxRrh5QpCQ'
+      );
+      document.getElementById('successMsg').style.display = 'block';
+      ['contactName','contactEmail','contactPhone','contactMessage'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('contactSubject').value = '';
+      showToast('Gửi tin nhắn thành công! 🎉', 'success');
+    } catch(e) {
+      showToast('Gửi thất bại! Vui lòng thử lại.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '📨 Gửi tin nhắn';
+    }
+  }
+</script>
+</body>
+</html>

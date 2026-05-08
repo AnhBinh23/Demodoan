@@ -21,7 +21,7 @@ const getAllProducts = async (req, res) => {
         const params = [];
         if (category_id) { sql += ' AND p.category_id = ?'; params.push(category_id); }
         if (search) { sql += ' AND (p.product_name LIKE ? OR p.brand LIKE ?)'; params.push('%'+search+'%','%'+search+'%'); }
-        const [countRows] = await db.query(sql.replace('SELECT p.*, c.category_name', 'SELECT COUNT(*) as total'), params);
+        const [countRows] = await db.query(sql.replace('SELECT p.*, c.category_name','SELECT COUNT(*) as total'), params);
         sql += ' ORDER BY p.created_at DESC LIMIT ? OFFSET ?';
         params.push(parseInt(limit), parseInt(offset));
         const [products] = await db.query(sql, params);
@@ -34,7 +34,7 @@ const getProductById = async (req, res) => {
         const [products] = await db.query(`SELECT p.*, c.category_name FROM products p
             JOIN categories c ON p.category_id = c.category_id WHERE p.product_id = ? AND p.is_active = 1`, [req.params.id]);
         if (!products.length) return res.status(404).json({ message: 'Không tìm thấy!' });
-        const [images]  = await db.query('SELECT * FROM product_images WHERE product_id = ?', [req.params.id]);
+        const [images]  = await db.query('SELECT * FROM product_images WHERE product_id = ? ORDER BY is_primary DESC', [req.params.id]);
         const [reviews] = await db.query(`SELECT r.*, u.full_name FROM reviews r JOIN users u ON r.user_id = u.user_id WHERE r.product_id = ? ORDER BY r.created_at DESC`, [req.params.id]);
         res.json({ ...products[0], images, reviews });
     } catch(err) { res.status(500).json({ message: 'Lỗi server!', error: err.message }); }
@@ -45,9 +45,9 @@ const createProduct = async (req, res) => {
         const { category_id, product_name, description, price, discount, stock, brand } = req.body;
         let image_url = req.body.image_url || null;
 
-        // Upload ảnh lên Cloudinary nếu có
-        if (req.file && req.file.buffer) {
-            const result = await uploadToCloudinary(req.file.buffer, 'ascent-music/products');
+        // Upload ảnh chính
+        if (req.files && req.files['image'] && req.files['image'][0]) {
+            const result = await uploadToCloudinary(req.files['image'][0].buffer, 'ascent-music/products');
             image_url = result.secure_url;
         }
 
@@ -55,7 +55,17 @@ const createProduct = async (req, res) => {
             'INSERT INTO products (category_id, product_name, description, price, discount, stock, brand, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [category_id, product_name, description, price, discount||0, stock||0, brand, image_url]
         );
-        res.status(201).json({ message: 'Thêm sản phẩm thành công!', product_id: result.insertId });
+        const product_id = result.insertId;
+
+        // Upload ảnh phụ
+        const thumbFiles = req.files && req.files['thumb_images'] ? req.files['thumb_images'] : [];
+        for (const file of thumbFiles) {
+            const thumbResult = await uploadToCloudinary(file.buffer, 'ascent-music/products/thumbs');
+            await db.query('INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, 0)',
+                [product_id, thumbResult.secure_url]);
+        }
+
+        res.status(201).json({ message: 'Thêm sản phẩm thành công!', product_id });
     } catch(err) { res.status(500).json({ message: 'Lỗi server!', error: err.message }); }
 };
 
@@ -66,17 +76,23 @@ const updateProduct = async (req, res) => {
         let sql = 'UPDATE products SET category_id=?, product_name=?, description=?, price=?, discount=?, stock=?, brand=?, is_active=?';
         const params = [category_id, product_name, description, price, discount, stock, brand, is_active??1];
 
-        if (req.file && req.file.buffer) {
-            const result = await uploadToCloudinary(req.file.buffer, 'ascent-music/products');
-            sql += ', image_url=?';
-            params.push(result.secure_url);
-        } else if (req.body.image_url) {
-            sql += ', image_url=?';
-            params.push(req.body.image_url);
+        if (req.files && req.files['image'] && req.files['image'][0]) {
+            const result = await uploadToCloudinary(req.files['image'][0].buffer, 'ascent-music/products');
+            sql += ', image_url=?'; params.push(result.secure_url);
+        } else if (req.body.image_url && req.body.image_url.startsWith('http')) {
+            sql += ', image_url=?'; params.push(req.body.image_url);
         }
-        sql += ' WHERE product_id=?';
-        params.push(id);
+        sql += ' WHERE product_id=?'; params.push(id);
         await db.query(sql, params);
+
+        // Upload ảnh phụ mới (thêm vào, không xóa cũ)
+        const thumbFiles = req.files && req.files['thumb_images'] ? req.files['thumb_images'] : [];
+        for (const file of thumbFiles) {
+            const thumbResult = await uploadToCloudinary(file.buffer, 'ascent-music/products/thumbs');
+            await db.query('INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, 0)',
+                [id, thumbResult.secure_url]);
+        }
+
         res.json({ message: 'Cập nhật thành công!' });
     } catch(err) { res.status(500).json({ message: 'Lỗi server!', error: err.message }); }
 };

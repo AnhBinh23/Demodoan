@@ -145,9 +145,10 @@ function renderFooter() {
         <div class="footer-col">
           <h4>Liên hệ</h4>
           <ul>
-            <li><a href="#">📍 123 Đường Âm Nhạc, HCM</a></li>
-            <li><a href="#">📞 0900 123 456</a></li>
-            <li><a href="#">✉️ info@ascent-music.com</a></li>
+      
+            <li><a href="#" style="white-space:nowrap">📍 B10B Nam Trung Yên - Trung Hoà, Hanoi</a></li>
+            <li><a href="#">📞 033 341 9432</a></li>
+            <li><a href="#" style="white-space:nowrap">✉️ ascentmusicstudio2026@gmail.com</a></li>
             <li><a href="${pages}contact.html">📬 Gửi tin nhắn</a></li>
           </ul>
         </div>

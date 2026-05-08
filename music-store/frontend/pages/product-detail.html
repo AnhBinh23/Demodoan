@@ -3,8 +3,94 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chi tiết sản phẩm — MusicStore</title>
+  <title>Chi tiết sản phẩm — Ascent-Music</title>
   <link rel="stylesheet" href="../css/style.css"/>
+  <style>
+    /* GALLERY */
+    .gallery-wrap { display:flex; flex-direction:column; gap:0.8rem; }
+
+    .main-img-wrap {
+      aspect-ratio: 1;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      position: relative;
+      cursor: zoom-in;
+    }
+    .main-img-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+    .main-img-wrap:hover img { transform: scale(1.04); }
+    .main-img-placeholder {
+      width:100%; height:100%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:5rem; opacity:0.2;
+    }
+
+    /* THUMBNAILS */
+    .thumb-list {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.6rem;
+    }
+    .thumb-item {
+      aspect-ratio: 1;
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid transparent;
+      background: var(--bg3);
+      transition: all 0.2s ease;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .thumb-item img { width:100%; height:100%; object-fit:cover; }
+    .thumb-item:hover { border-color: rgba(201,168,76,0.5); }
+    .thumb-item.active { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(201,168,76,0.2); }
+    .thumb-placeholder { font-size:1.5rem; opacity:0.3; }
+
+    /* LIGHTBOX */
+    .lightbox {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 500;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .lightbox.open { display: flex; }
+    .lightbox img {
+      max-width: 90vw;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: var(--radius-lg);
+    }
+    .lightbox-close {
+      position: fixed; top: 1rem; right: 1rem;
+      background: rgba(255,255,255,0.1); border: none;
+      color: #fff; font-size: 1.5rem;
+      width: 44px; height: 44px;
+      border-radius: 50%; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .lightbox-close:hover { background: rgba(255,255,255,0.2); }
+    .lightbox-prev, .lightbox-next {
+      position: fixed; top: 50%; transform: translateY(-50%);
+      background: rgba(255,255,255,0.1); border: none;
+      color: #fff; font-size: 1.5rem;
+      width: 48px; height: 48px;
+      border-radius: 50%; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .lightbox-prev { left: 1rem; }
+    .lightbox-next { right: 1rem; }
+    .lightbox-prev:hover, .lightbox-next:hover { background: rgba(255,255,255,0.25); }
+  </style>
 </head>
 <body>
 
@@ -12,6 +98,14 @@
 
 <div class="section" style="padding-top:2rem" id="mainContent">
   <div class="loading"><div class="spinner"></div></div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <button class="lightbox-prev" onclick="event.stopPropagation();prevImg()">‹</button>
+  <img id="lightboxImg" src="" alt=""/>
+  <button class="lightbox-next" onclick="event.stopPropagation();nextImg()">›</button>
 </div>
 
 <div id="footer-placeholder"></div>
@@ -26,13 +120,30 @@
   const productId = new URLSearchParams(location.search).get('id');
   if (!productId) window.location.href = 'products.html';
 
+  let galleryImages = [];
+  let currentImgIndex = 0;
+
   async function loadProduct() {
     const content = document.getElementById('mainContent');
     try {
       const p = await Products.getById(productId);
       const finalPrice = p.price * (1 - (p.discount||0) / 100);
+      document.title = p.product_name + ' — Ascent-Music';
 
-      document.title = `${p.product_name} — MusicStore`;
+      // Gom tất cả ảnh: ảnh chính + ảnh phụ
+      galleryImages = [];
+      if (p.image_url) galleryImages.push(p.image_url);
+      if (p.images && p.images.length) {
+        p.images.forEach(img => {
+          if (img.image_url && !galleryImages.includes(img.image_url)) {
+            galleryImages.push(img.image_url);
+          }
+        });
+      }
+      // Nếu chỉ có 1 ảnh, tạo 3 ảnh giống nhau để demo thumbnail
+      if (galleryImages.length === 1) {
+        galleryImages = [galleryImages[0], galleryImages[0], galleryImages[0], galleryImages[0]];
+      }
 
       content.innerHTML = `
       <!-- BREADCRUMB -->
@@ -42,28 +153,32 @@
         <span style="color:var(--cream)">${p.product_name}</span>
       </div>
 
-      <!-- DETAIL GRID -->
       <div class="detail-grid">
-        <!-- ẢNH -->
-        <div class="detail-images">
-          <div class="main-img" id="mainImg">
-            ${p.image_url
-              ? `<img src="${p.image_url}" alt="${p.product_name}" id="mainImgEl" onerror="this.parentElement.innerHTML='<div style=font-size:5rem;opacity:0.3>🎵</div>'"/>`
-              : `<div style="font-size:5rem;opacity:0.3">🎵</div>`}
+        <!-- ẢNH GALLERY -->
+        <div class="gallery-wrap">
+          <!-- ẢNH LỚN -->
+          <div class="main-img-wrap" onclick="openLightbox(0)" id="mainImgWrap">
+            ${galleryImages.length
+              ? `<img src="${galleryImages[0]}" alt="${p.product_name}" id="mainImg"
+                   onerror="this.parentElement.innerHTML='<div class=main-img-placeholder>🎵</div>'"/>`
+              : `<div class="main-img-placeholder">🎵</div>`}
           </div>
-          ${p.images?.length ? `
-          <div class="thumb-list">
-            ${p.images.map((img,i) => `
-              <div class="thumb ${i===0?'active':''}" onclick="changeImg('${img.image_url}', this)">
-                <img src="${img.image_url}" alt=""/>
+
+          <!-- THUMBNAILS -->
+          ${galleryImages.length > 1 ? `
+          <div class="thumb-list" id="thumbList">
+            ${galleryImages.map((img, i) => `
+              <div class="thumb-item ${i===0?'active':''}" id="thumb-${i}" onclick="switchImg(${i})">
+                <img src="${img}" alt="Ảnh ${i+1}"
+                  onerror="this.parentElement.innerHTML='<span class=thumb-placeholder>🎵</span>'"/>
               </div>`).join('')}
           </div>` : ''}
         </div>
 
-        <!-- THÔNG TIN -->
+        <!-- THÔNG TIN SẢN PHẨM -->
         <div class="detail-info">
           <div class="product-category">${p.category_name}</div>
-          <h1>${p.product_name}</h1>
+          <h1 style="font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:700;margin-bottom:0.5rem;line-height:1.2">${p.product_name}</h1>
 
           <div style="display:flex;align-items:center;gap:1rem;margin:0.5rem 0">
             <span style="color:var(--muted);font-size:0.88rem">Thương hiệu: <strong style="color:var(--cream)">${p.brand||'—'}</strong></span>
@@ -82,10 +197,8 @@
 
           <hr class="divider"/>
 
-          <!-- MÔ TẢ -->
           ${p.description ? `<p style="font-size:0.92rem;color:var(--muted);line-height:1.7;margin-bottom:1.2rem">${p.description}</p>` : ''}
 
-          <!-- THÔNG SỐ -->
           <div class="specs" style="margin-bottom:1.5rem">
             <div class="spec-item"><span class="spec-label">Danh mục</span><span class="spec-value">${p.category_name}</span></div>
             <div class="spec-item"><span class="spec-label">Thương hiệu</span><span class="spec-value">${p.brand||'—'}</span></div>
@@ -93,7 +206,6 @@
             <div class="spec-item"><span class="spec-label">Tồn kho</span><span class="spec-value">${p.stock} sản phẩm</span></div>
           </div>
 
-          <!-- SỐ LƯỢNG -->
           ${p.stock > 0 ? `
           <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem">
             <span style="font-size:0.85rem;color:var(--muted)">Số lượng:</span>
@@ -103,13 +215,11 @@
               <button class="qty-btn" onclick="changeQty(1)">+</button>
             </div>
           </div>
-
-          <!-- NÚT MUA -->
           <div class="detail-actions">
-            <button class="btn btn-primary" style="flex:1" onclick="addToCart(${p.product_id}, '${p.product_name}', ${p.stock})">
+            <button class="btn btn-primary" style="flex:1" onclick="addToCart(${p.product_id},'${p.product_name.replace(/'/g,"\\'")}',${p.stock})">
               🛒 Thêm vào giỏ hàng
             </button>
-            <button class="btn btn-outline" onclick="buyNow(${p.product_id}, '${p.product_name}', ${p.stock})">
+            <button class="btn btn-outline" onclick="buyNow(${p.product_id},'${p.product_name.replace(/'/g,"\\'")}',${p.stock})">
               ⚡ Mua ngay
             </button>
           </div>` : `
@@ -149,6 +259,50 @@
     }
   }
 
+  // ĐỔI ẢNH KHI BẤM THUMBNAIL
+  function switchImg(index) {
+    currentImgIndex = index;
+    const mainImg = document.getElementById('mainImg');
+    if (mainImg) {
+      mainImg.style.opacity = '0';
+      mainImg.style.transition = 'opacity 0.2s';
+      setTimeout(() => {
+        mainImg.src = galleryImages[index];
+        mainImg.style.opacity = '1';
+      }, 150);
+    }
+    // Active thumbnail
+    document.querySelectorAll('.thumb-item').forEach((el, i) => {
+      el.classList.toggle('active', i === index);
+    });
+  }
+
+  // LIGHTBOX
+  function openLightbox(index) {
+    currentImgIndex = index;
+    document.getElementById('lightboxImg').src = galleryImages[index];
+    document.getElementById('lightbox').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeLightbox(e) {
+    if (e && e.target !== document.getElementById('lightbox') && e.target !== document.querySelector('.lightbox-close')) return;
+    document.getElementById('lightbox').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function prevImg() {
+    currentImgIndex = (currentImgIndex - 1 + galleryImages.length) % galleryImages.length;
+    document.getElementById('lightboxImg').src = galleryImages[currentImgIndex];
+  }
+  function nextImg() {
+    currentImgIndex = (currentImgIndex + 1) % galleryImages.length;
+    document.getElementById('lightboxImg').src = galleryImages[currentImgIndex];
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape')    { document.getElementById('lightbox').classList.remove('open'); document.body.style.overflow=''; }
+    if (e.key === 'ArrowLeft') prevImg();
+    if (e.key === 'ArrowRight') nextImg();
+  });
+
   async function loadRelated(categoryId, excludeId) {
     try {
       const { products } = await Products.getAll({ category_id: categoryId, limit: 4 });
@@ -174,18 +328,11 @@
     } catch {}
   }
 
-  function changeImg(url, el) {
-    document.getElementById('mainImgEl').src = url;
-    document.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
-    el.classList.add('active');
-  }
-
   function changeQty(delta) {
     const inp = document.getElementById('qtyInput');
-    const max = parseInt(inp.max);
     let val = parseInt(inp.value) + delta;
     if (val < 1) val = 1;
-    if (val > max) val = max;
+    if (val > parseInt(inp.max)) val = parseInt(inp.max);
     inp.value = val;
   }
 
@@ -198,7 +345,7 @@
     const qty = parseInt(document.getElementById('qtyInput')?.value || 1);
     try {
       await Cart.add(product_id, qty);
-      showToast(`Đã thêm "${name}" vào giỏ hàng!`, 'success');
+      showToast('Đã thêm vào giỏ hàng!', 'success');
       updateCartBadge();
     } catch(e) { showToast(e.message, 'error'); }
   }
