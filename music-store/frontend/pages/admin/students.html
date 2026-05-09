@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quản lý Học viên — Admin</title>
+  <link rel="stylesheet" href="admin.css"/>
+  <style>
+    .debt-badge { padding:.2rem .6rem; border-radius:20px; font-size:.75rem; font-weight:600; }
+    .debt-ok    { background:rgba(76,175,128,.15); color:var(--green); }
+    .debt-warn  { background:rgba(255,165,0,.15);  color:orange; }
+    .debt-danger{ background:rgba(224,85,85,.15);  color:var(--red); }
+    .info-row   { display:flex; gap:2rem; flex-wrap:wrap; margin-bottom:1rem; }
+    .info-item  { font-size:.85rem; color:var(--muted); }
+    .info-item strong { color:var(--cream); display:block; }
+    .tab-bar    { display:flex; gap:.5rem; margin-bottom:1.2rem; border-bottom:1px solid var(--border); }
+    .tab-btn    { padding:.5rem 1rem; background:none; border:none; color:var(--muted); cursor:pointer; font-size:.88rem; border-bottom:2px solid transparent; transition:.2s; }
+    .tab-btn.active { color:var(--gold); border-bottom-color:var(--gold); }
+  </style>
+</head>
+<body>
+<div id="sidebar-placeholder"></div>
+
+<main class="admin-main">
+  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
+    <div><h1>🎓 Học viên</h1><p>Quản lý học viên và đăng ký học</p></div>
+    <button class="btn btn-primary" onclick="openModal()">+ Thêm học viên</button>
+  </div>
+
+  <!-- STATS -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem">
+    <div class="stat-card"><div class="stat-icon" style="background:rgba(201,168,76,.1)">🎓</div><div class="stat-info"><div class="value" id="stTotal">—</div><div class="label">Tổng học viên</div></div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:rgba(76,175,128,.1)">📚</div><div class="stat-info"><div class="value" id="stActive">—</div><div class="label">Đang học</div></div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:rgba(255,165,0,.1)">💰</div><div class="stat-info"><div class="value" id="stDebt">—</div><div class="label">Còn nợ học phí</div></div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:rgba(100,149,237,.1)">📅</div><div class="stat-info"><div class="value" id="stNew">—</div><div class="label">Mới tháng này</div></div></div>
+  </div>
+
+  <div class="admin-table-wrap">
+    <div class="table-toolbar">
+      <div class="search-input"><span>🔍</span><input type="text" placeholder="Tìm học viên, SĐT..." id="searchInput" oninput="filterStudents()"/></div>
+      <select class="form-select" style="width:auto" id="statusFilter" onchange="filterStudents()">
+        <option value="">Tất cả</option>
+        <option value="1">Đang hoạt động</option>
+        <option value="0">Đã nghỉ</option>
+      </select>
+      <button class="btn btn-outline btn-sm" onclick="loadStudents()">🔄 Làm mới</button>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Học viên</th><th>Liên hệ</th><th>Phụ huynh</th><th>Lớp đang học</th><th>Học phí</th><th>Trạng thái</th><th>Thao tác</th></tr>
+      </thead>
+      <tbody id="studentsBody">
+        <tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- MODAL THÊM/SỬA -->
+<div class="modal-overlay" id="studentModal" style="display:none">
+  <div class="modal" style="max-width:600px;max-height:90vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3 id="modalTitle">Thêm học viên</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <input type="hidden" id="editId"/>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Họ và tên *</label>
+        <input type="text" class="form-input" id="fName" placeholder="Nguyễn Văn An"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Số điện thoại *</label>
+        <input type="text" class="form-input" id="fPhone" placeholder="090xxxxxxx"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="fEmail" placeholder="email@gmail.com"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ngày sinh</label>
+        <input type="date" class="form-input" id="fDob"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Giới tính</label>
+        <select class="form-select" id="fGender">
+          <option value="">-- Chọn --</option>
+          <option value="male">Nam</option>
+          <option value="female">Nữ</option>
+          <option value="other">Khác</option>
+        </select>
+      </div>
+      <div class="form-group" id="statusGrp" style="display:none">
+        <label class="form-label">Trạng thái</label>
+        <select class="form-select" id="fActive">
+          <option value="1">Đang học</option>
+          <option value="0">Đã nghỉ</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Địa chỉ</label>
+      <input type="text" class="form-input" id="fAddress" placeholder="Số nhà, đường, quận..."/>
+    </div>
+
+    <hr style="border-color:var(--border);margin:1rem 0"/>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:.8rem">👨‍👩‍👧 Thông tin phụ huynh (nếu học viên dưới 18 tuổi)</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Tên phụ huynh</label>
+        <input type="text" class="form-input" id="fParent" placeholder="Nguyễn Văn Bình"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">SĐT phụ huynh</label>
+        <input type="text" class="form-input" id="fParentPhone" placeholder="090xxxxxxx"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Ghi chú</label>
+      <textarea class="form-textarea" id="fNote" placeholder="Ghi chú thêm..." style="min-height:60px"></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Hủy</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveStudent()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CHI TIẾT HỌC VIÊN -->
+<div class="modal-overlay" id="detailModal" style="display:none">
+  <div class="modal" style="max-width:700px;max-height:90vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3 id="detailTitle">Chi tiết học viên</h3>
+      <button class="modal-close" onclick="document.getElementById('detailModal').style.display='none'">✕</button>
+    </div>
+    <div id="detailContent"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- MODAL ĐĂNG KÝ LỚP -->
+<div class="modal-overlay" id="enrollModal" style="display:none">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3>Đăng ký lớp học</h3>
+      <button class="modal-close" onclick="document.getElementById('enrollModal').style.display='none'">✕</button>
+    </div>
+    <input type="hidden" id="enrollStudentId"/>
+    <div class="form-group">
+      <label class="form-label">Chọn lớp học *</label>
+      <select class="form-select" id="enrollClassId"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Giảm học phí (VNĐ)</label>
+      <input type="number" class="form-input" id="enrollDiscount" placeholder="0" min="0"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Ghi chú</label>
+      <input type="text" class="form-input" id="enrollNote" placeholder="VD: Học sinh ưu tiên, giảm 10%"/>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('enrollModal').style.display='none'">Hủy</button>
+      <button class="btn btn-primary" onclick="submitEnroll()">Đăng ký</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL THU HỌC PHÍ -->
+<div class="modal-overlay" id="payModal" style="display:none">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h3>Thu học phí</h3>
+      <button class="modal-close" onclick="document.getElementById('payModal').style.display='none'">✕</button>
+    </div>
+    <input type="hidden" id="payEnrollmentId"/>
+    <div class="form-group">
+      <label class="form-label">Số tiền thu *</label>
+      <input type="number" class="form-input" id="payAmount" placeholder="1500000"/>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Ngày thu</label>
+        <input type="date" class="form-input" id="payDate"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Hình thức</label>
+        <select class="form-select" id="payMethod">
+          <option value="cash">Tiền mặt</option>
+          <option value="banking">Chuyển khoản</option>
+          <option value="momo">MoMo</option>
+          <option value="vnpay">VNPay</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Ghi chú</label>
+      <input type="text" class="form-input" id="payNote" placeholder="Đóng đợt 1..."/>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('payModal').style.display='none'">Hủy</button>
+      <button class="btn btn-primary" onclick="submitPayment()">Thu tiền</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="../../js/api.js"></script>
+<script src="sidebar.js"></script>
+<script>
+  renderSidebar('students');
+  let allStudents = [], allClasses = [];
+
+  async function loadStudents() {
+    try {
+      allStudents = await api.get('/center/students');
+      allClasses  = await api.get('/center/classes?status=upcoming') || [];
+      renderStats(allStudents);
+      renderTable(allStudents);
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  function renderStats(data) {
+    const now  = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    document.getElementById('stTotal').textContent = data.length;
+    document.getElementById('stActive').textContent = data.filter(s => s.active_enrollments > 0).length;
+    document.getElementById('stDebt').textContent   = data.filter(s => (s.total_tuition||0) - (s.total_paid||0) > 0).length;
+    document.getElementById('stNew').textContent    = data.filter(s => s.created_at?.startsWith(thisMonth)).length;
+  }
+
+  function renderTable(data) {
+    const tbody = document.getElementById('studentsBody');
+    if (!data.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🎓</div><p>Chưa có học viên</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = data.map(s => {
+      const debt = (s.total_tuition||0) - (s.total_paid||0);
+      const debtClass = debt <= 0 ? 'debt-ok' : debt < 1000000 ? 'debt-warn' : 'debt-danger';
+      const debtText  = debt <= 0 ? '✓ Đã đóng' : `Còn ${formatPrice(debt)}`;
+      return `
+        <tr>
+          <td>
+            <div style="font-weight:600">${s.full_name}</div>
+            <div style="font-size:.78rem;color:var(--muted)">${s.date_of_birth ? new Date(s.date_of_birth).toLocaleDateString('vi-VN') : '—'}</div>
+          </td>
+          <td>
+            <div>${s.phone}</div>
+            <div style="font-size:.78rem;color:var(--muted)">${s.email||''}</div>
+          </td>
+          <td style="font-size:.85rem;color:var(--muted)">${s.parent_name ? `${s.parent_name}<br/><span style='font-size:.75rem'>${s.parent_phone||''}</span>` : '—'}</td>
+          <td style="text-align:center">
+            <span style="color:var(--gold);font-weight:600">${s.active_enrollments||0}</span>
+            <span style="color:var(--muted);font-size:.8rem"> lớp</span>
+          </td>
+          <td><span class="debt-badge ${debtClass}">${debtText}</span></td>
+          <td><span class="badge ${s.is_active ? 'badge-active' : 'badge-inactive'}">${s.is_active ? 'Đang học' : 'Đã nghỉ'}</span></td>
+          <td style="display:flex;gap:.3rem;flex-wrap:wrap">
+            <button class="btn btn-outline btn-sm" onclick="viewDetail(${s.student_id})">👁</button>
+            <button class="btn btn-outline btn-sm" onclick="openEnroll(${s.student_id})" title="Đăng ký lớp">📚</button>
+            <button class="btn btn-outline btn-sm" onclick="editStudent(${s.student_id})">✏️</button>
+            <button class="btn btn-danger  btn-sm" onclick="deleteStudent(${s.student_id},'${s.full_name.replace(/'/g,"\\'")}')">🗑</button>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  function filterStudents() {
+    const q  = document.getElementById('searchInput').value.toLowerCase();
+    const st = document.getElementById('statusFilter').value;
+    renderTable(allStudents.filter(s =>
+      (!q  || s.full_name.toLowerCase().includes(q) || (s.phone||'').includes(q)) &&
+      (st === '' || String(s.is_active) === st)
+    ));
+  }
+
+  // ====== CHI TIẾT HỌC VIÊN ======
+  async function viewDetail(id) {
+    document.getElementById('detailModal').style.display = 'flex';
+    document.getElementById('detailContent').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+    try {
+      const s = await api.get('/center/students/' + id);
+      document.getElementById('detailTitle').textContent = s.full_name;
+      document.getElementById('detailContent').innerHTML = `
+        <div class="info-row">
+          <div class="info-item"><strong>${s.phone}</strong>Điện thoại</div>
+          <div class="info-item"><strong>${s.email||'—'}</strong>Email</div>
+          <div class="info-item"><strong>${s.date_of_birth ? new Date(s.date_of_birth).toLocaleDateString('vi-VN') : '—'}</strong>Ngày sinh</div>
+          <div class="info-item"><strong>${s.address||'—'}</strong>Địa chỉ</div>
+          ${s.parent_name ? `<div class="info-item"><strong>${s.parent_name} — ${s.parent_phone||''}</strong>Phụ huynh</div>` : ''}
+        </div>
+        <h4 style="margin-bottom:1rem;font-size:.95rem">📚 Lịch sử đăng ký học</h4>
+        ${s.enrollments?.length ? s.enrollments.map(e => {
+          const paid = e.paid_amount || 0;
+          const debt = (e.final_amount||0) - paid;
+          return `
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;margin-bottom:.8rem">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
+                <div>
+                  <div style="font-weight:600">${e.class_name}</div>
+                  <div style="font-size:.8rem;color:var(--muted)">${e.course_name} · GV: ${e.teacher_name}</div>
+                  <div style="font-size:.8rem;color:var(--muted)">${e.schedule_days||''} ${e.schedule_time||''}</div>
+                </div>
+                <span class="badge ${e.enroll_status==='active'?'badge-active':e.enroll_status==='completed'?'badge-confirmed':'badge-cancelled'}">
+                  ${e.enroll_status==='active'?'Đang học':e.enroll_status==='completed'?'Hoàn thành':e.enroll_status==='paused'?'Tạm dừng':'Nghỉ'}
+                </span>
+              </div>
+              <div style="display:flex;gap:1.5rem;font-size:.83rem">
+                <span>Học phí: <strong style="color:var(--gold)">${formatPrice(e.final_amount)}</strong></span>
+                <span>Đã đóng: <strong style="color:var(--green)">${formatPrice(paid)}</strong></span>
+                <span>Còn nợ: <strong style="color:${debt>0?'var(--red)':'var(--green)'}">${formatPrice(debt)}</strong></span>
+              </div>
+              ${debt > 0 ? `<button class="btn btn-primary btn-sm" style="margin-top:.6rem" onclick="openPay(${e.enrollment_id})">💰 Thu học phí</button>` : ''}
+            </div>`}).join('')
+          : '<div class="empty-state"><div class="icon">📚</div><p>Chưa đăng ký lớp nào</p></div>'}`;
+    } catch(e) { showToast(e.message,'error'); }
+  }
+
+  // ====== ĐĂNG KÝ LỚP ======
+  async function openEnroll(studentId) {
+    document.getElementById('enrollStudentId').value = studentId;
+    document.getElementById('enrollDiscount').value  = '';
+    document.getElementById('enrollNote').value      = '';
+    const sel = document.getElementById('enrollClassId');
+    sel.innerHTML = allClasses.map(c =>
+      `<option value="${c.class_id}">${c.class_name} — ${c.course_name} (còn ${c.available_slots} chỗ)</option>`
+    ).join('') || '<option>Không có lớp nào</option>';
+    document.getElementById('enrollModal').style.display = 'flex';
+  }
+
+  async function submitEnroll() {
+    const student_id = document.getElementById('enrollStudentId').value;
+    const class_id   = document.getElementById('enrollClassId').value;
+    const discount   = document.getElementById('enrollDiscount').value || 0;
+    const note       = document.getElementById('enrollNote').value;
+    try {
+      await api.post('/center/enrollments', { student_id, class_id, discount_amount: discount, note });
+      showToast('Đăng ký học thành công!', 'success');
+      document.getElementById('enrollModal').style.display = 'none';
+      await loadStudents();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  // ====== THU HỌC PHÍ ======
+  function openPay(enrollmentId) {
+    document.getElementById('payEnrollmentId').value = enrollmentId;
+    document.getElementById('payAmount').value       = '';
+    document.getElementById('payNote').value         = '';
+    document.getElementById('payDate').value         = new Date().toISOString().split('T')[0];
+    document.getElementById('payModal').style.display = 'flex';
+  }
+
+  async function submitPayment() {
+    const enrollment_id    = document.getElementById('payEnrollmentId').value;
+    const amount           = document.getElementById('payAmount').value;
+    const payment_date     = document.getElementById('payDate').value;
+    const payment_method   = document.getElementById('payMethod').value;
+    const note             = document.getElementById('payNote').value;
+    if (!amount) { showToast('Nhập số tiền!', 'error'); return; }
+    try {
+      await api.post('/center/payments', { enrollment_id, amount, payment_date, payment_method, note });
+      showToast('Ghi nhận học phí thành công! 💰', 'success');
+      document.getElementById('payModal').style.display = 'none';
+      await loadStudents();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  // ====== FORM HỌC VIÊN ======
+  function openModal(s = null) {
+    document.getElementById('modalTitle').textContent = s ? 'Sửa học viên' : 'Thêm học viên';
+    document.getElementById('editId').value       = s?.student_id || '';
+    document.getElementById('fName').value        = s?.full_name || '';
+    document.getElementById('fPhone').value       = s?.phone || '';
+    document.getElementById('fEmail').value       = s?.email || '';
+    document.getElementById('fDob').value         = s?.date_of_birth?.split('T')[0] || '';
+    document.getElementById('fGender').value      = s?.gender || '';
+    document.getElementById('fAddress').value     = s?.address || '';
+    document.getElementById('fParent').value      = s?.parent_name || '';
+    document.getElementById('fParentPhone').value = s?.parent_phone || '';
+    document.getElementById('fNote').value        = s?.note || '';
+    document.getElementById('fActive').value      = s?.is_active ?? 1;
+    document.getElementById('statusGrp').style.display = s ? 'block' : 'none';
+    document.getElementById('studentModal').style.display = 'flex';
+  }
+
+  function closeModal() { document.getElementById('studentModal').style.display = 'none'; }
+
+  function editStudent(id) {
+    const s = allStudents.find(x => x.student_id === id);
+    if (s) openModal(s);
+  }
+
+  async function saveStudent() {
+    const id   = document.getElementById('editId').value;
+    const name = document.getElementById('fName').value.trim();
+    const phone= document.getElementById('fPhone').value.trim();
+    if (!name || !phone) { showToast('Họ tên và SĐT là bắt buộc!', 'error'); return; }
+
+    const body = {
+      full_name: name, phone,
+      email:        document.getElementById('fEmail').value.trim() || null,
+      date_of_birth:document.getElementById('fDob').value || null,
+      gender:       document.getElementById('fGender').value || null,
+      address:      document.getElementById('fAddress').value.trim() || null,
+      parent_name:  document.getElementById('fParent').value.trim() || null,
+      parent_phone: document.getElementById('fParentPhone').value.trim() || null,
+      note:         document.getElementById('fNote').value.trim() || null,
+      is_active:    document.getElementById('fActive').value,
+    };
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true; btn.textContent = 'Đang lưu...';
+    try {
+      if (id) await api.put('/center/students/' + id, body);
+      else     await api.post('/center/students', body);
+      showToast(id ? 'Cập nhật thành công!' : 'Thêm học viên thành công!', 'success');
+      closeModal(); await loadStudents();
+    } catch(e) { showToast(e.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Lưu'; }
+  }
+
+  async function deleteStudent(id, name) {
+    if (!confirm(`Vô hiệu hóa học viên "${name}"?`)) return;
+    try {
+      await api.delete('/center/students/' + id);
+      showToast('Đã vô hiệu hóa!', 'success'); await loadStudents();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  loadStudents();
+</script>
+</body>
+</html>

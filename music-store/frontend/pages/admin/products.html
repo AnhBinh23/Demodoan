@@ -16,14 +16,6 @@
     .main-preview { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:var(--radius); display:none; margin-top:0.5rem; }
     .remove-main { display:none; margin-top:0.4rem; }
 
-    /* MULTI IMAGES */
-    .multi-upload-zone {
-      border:2px dashed var(--border); border-radius:var(--radius);
-      padding:1rem; text-align:center; cursor:pointer;
-      transition:all 0.2s; position:relative; background:var(--bg3);
-    }
-    .multi-upload-zone:hover { border-color:var(--gold); background:rgba(201,168,76,0.04); }
-    .multi-upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
     .thumb-preview-grid {
       display:grid; grid-template-columns:repeat(4,1fr); gap:0.5rem; margin-top:0.8rem;
     }
@@ -136,11 +128,10 @@
       <button class="btn btn-outline btn-sm remove-main" id="removeMainBtn" onclick="removeMainImg()">✕ Xóa ảnh</button>
     </div>
 
-    <!-- ẢNH PHỤ (THUMBNAILS) -->
+    <!-- ẢNH PHỤ -->
     <div class="form-group">
       <label class="form-label">🖼️ Ảnh phụ <span style="color:var(--muted);font-weight:400">(3-4 ảnh nhỏ bên dưới ảnh chính)</span></label>
       <div class="thumb-preview-grid" id="thumbGrid">
-        <!-- Ảnh đã thêm sẽ hiện ở đây -->
         <div class="thumb-add-btn" id="addThumbBtn">
           <input type="file" accept=".jpg,.jpeg,.png,.webp" multiple onchange="addThumbImgs(this)"/>
           <span>＋</span>
@@ -170,8 +161,12 @@
 <script>
   renderSidebar('products');
   let allProducts = [], categories = [];
-  let thumbFiles = []; // Mảng lưu file ảnh phụ
+  let thumbFiles    = [];   // Mảng lưu file ảnh phụ MỚI chọn
+  let existingThumb = [];   // Mảng lưu URL ảnh phụ CŨ (khi sửa)
 
+  // =============================================
+  // LOAD DATA
+  // =============================================
   async function loadData() {
     try {
       categories = await Categories.getAll();
@@ -199,18 +194,24 @@
     }
     tbody.innerHTML = products.map(p => `
       <tr>
-        <td><div class="td-img" style="overflow:hidden">
-          ${p.image_url
-            ? `<img src="${p.image_url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius)" onerror="this.parentElement.innerHTML='🎵'"/>`
-            : '🎵'}</div></td>
-        <td><div style="font-weight:500">${p.product_name}</div><div style="font-size:0.78rem;color:var(--muted)">${p.brand||''}</div></td>
+        <td>
+          <div class="td-img" style="overflow:hidden">
+            ${p.image_url
+              ? `<img src="${p.image_url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius)" onerror="this.parentElement.innerHTML='🎵'"/>`
+              : '🎵'}
+          </div>
+        </td>
+        <td>
+          <div style="font-weight:500">${p.product_name}</div>
+          <div style="font-size:0.78rem;color:var(--muted)">${p.brand||''}</div>
+        </td>
         <td style="color:var(--muted)">${p.category_name}</td>
         <td style="color:var(--gold);font-weight:600">${formatPrice(p.price)}</td>
-        <td><span style="color:${p.stock<5?'var(--red)':'var(--green)'}">${p.stock}</span></td>
-        <td><span class="badge ${p.is_active?'badge-active':'badge-inactive'}">${p.is_active?'Đang bán':'Ngừng bán'}</span></td>
+        <td><span style="color:${p.stock < 5 ? 'var(--red)' : 'var(--green)'}">${p.stock}</span></td>
+        <td><span class="badge ${p.is_active ? 'badge-active' : 'badge-inactive'}">${p.is_active ? 'Đang bán' : 'Ngừng bán'}</span></td>
         <td style="display:flex;gap:0.4rem">
           <button class="btn btn-outline btn-sm" onclick="editProduct(${p.product_id})">✏️ Sửa</button>
-          <button class="btn btn-danger btn-sm"  onclick="deleteProduct(${p.product_id},'${p.product_name.replace(/'/g,"\\'")}')">🗑</button>
+          <button class="btn btn-danger btn-sm"  onclick="deleteProduct(${p.product_id}, '${p.product_name.replace(/'/g,"\\'")}')">🗑</button>
         </td>
       </tr>`).join('');
   }
@@ -224,45 +225,46 @@
     ));
   }
 
-  // ẢNH CHÍNH
+  // =============================================
+  // XỬ LÝ ẢNH CHÍNH
+  // =============================================
   function previewMainImg(input) {
     if (!input.files || !input.files[0]) return;
     const reader = new FileReader();
     reader.onload = e => {
       const preview = document.getElementById('mainImgPreview');
-      preview.src = e.target.result;
+      preview.src   = e.target.result;
       preview.style.display = 'block';
-      document.getElementById('removeMainBtn').style.display = 'inline-flex';
-      document.getElementById('mainUploadZone').style.display = 'none';
+      document.getElementById('removeMainBtn').style.display   = 'inline-flex';
+      document.getElementById('mainUploadZone').style.display  = 'none';
     };
     reader.readAsDataURL(input.files[0]);
   }
 
   function removeMainImg() {
     document.getElementById('mainImgPreview').style.display = 'none';
-    document.getElementById('mainImgPreview').src = '';
-    document.getElementById('removeMainBtn').style.display = 'none';
+    document.getElementById('mainImgPreview').src           = '';
+    document.getElementById('removeMainBtn').style.display  = 'none';
     document.getElementById('mainUploadZone').style.display = 'block';
-    document.getElementById('fMainImage').value = '';
+    document.getElementById('fMainImage').value             = '';
   }
 
-  // ẢNH PHỤ
+  // =============================================
+  // XỬ LÝ ẢNH PHỤ
+  // =============================================
   function addThumbImgs(input) {
-    const files = Array.from(input.files);
-    const remaining = 4 - thumbFiles.length;
-    const toAdd = files.slice(0, remaining);
-    toAdd.forEach(file => {
-      thumbFiles.push(file);
-      const reader = new FileReader();
-      reader.onload = e => renderThumbGrid();
-      reader.readAsDataURL(file);
-    });
+    const files     = Array.from(input.files);
+    const remaining = 4 - thumbFiles.length - existingThumb.length;
+    const toAdd     = files.slice(0, remaining);
     if (files.length > remaining) showToast('Tối đa 4 ảnh phụ!', 'info');
+    toAdd.forEach(file => { thumbFiles.push(file); });
     input.value = '';
+    renderThumbGrid();
   }
 
-  function removeThumb(index) {
-    thumbFiles.splice(index, 1);
+  function removeThumb(index, isExisting) {
+    if (isExisting) existingThumb.splice(index, 1);
+    else            thumbFiles.splice(index, 1);
     renderThumbGrid();
   }
 
@@ -270,18 +272,28 @@
     const grid = document.getElementById('thumbGrid');
     grid.innerHTML = '';
 
-    // Render các ảnh đã chọn
+    // Ảnh phụ CŨ (từ server, khi đang sửa sản phẩm)
+    existingThumb.forEach((url, i) => {
+      grid.innerHTML += `
+        <div class="thumb-preview-item">
+          <img src="${url}" alt=""/>
+          <button class="remove-thumb" onclick="removeThumb(${i}, true)">✕</button>
+        </div>`;
+    });
+
+    // Ảnh phụ MỚI (vừa chọn từ máy)
     thumbFiles.forEach((file, i) => {
       const url = URL.createObjectURL(file);
       grid.innerHTML += `
         <div class="thumb-preview-item">
           <img src="${url}" alt=""/>
-          <button class="remove-thumb" onclick="removeThumb(${i})">✕</button>
+          <button class="remove-thumb" onclick="removeThumb(${i}, false)">✕</button>
         </div>`;
     });
 
     // Nút thêm (nếu chưa đủ 4)
-    if (thumbFiles.length < 4) {
+    const total = thumbFiles.length + existingThumb.length;
+    if (total < 4) {
       grid.innerHTML += `
         <div class="thumb-add-btn">
           <input type="file" accept=".jpg,.jpeg,.png,.webp" multiple onchange="addThumbImgs(this)"/>
@@ -290,32 +302,44 @@
     }
   }
 
+  // =============================================
+  // MODAL OPEN / CLOSE
+  // =============================================
   function openModal(p = null) {
-    document.getElementById('modalTitle').textContent  = p ? 'Sửa sản phẩm' : 'Thêm sản phẩm';
-    document.getElementById('editId').value            = p?.product_id || '';
-    document.getElementById('fName').value             = p?.product_name || '';
-    document.getElementById('fBrand').value            = p?.brand || '';
-    document.getElementById('fCategory').value         = p?.category_id || '';
-    document.getElementById('fPrice').value            = p?.price || '';
-    document.getElementById('fDiscount').value         = p?.discount || 0;
-    document.getElementById('fStock').value            = p?.stock || 0;
-    document.getElementById('fDesc').value             = p?.description || '';
-    document.getElementById('fActive').value           = p?.is_active ?? 1;
-    document.getElementById('statusGroup').style.display = p ? 'block' : 'none';
+    document.getElementById('modalTitle').textContent        = p ? 'Sửa sản phẩm' : 'Thêm sản phẩm';
+    document.getElementById('editId').value                  = p?.product_id || '';
+    document.getElementById('fName').value                   = p?.product_name || '';
+    document.getElementById('fBrand').value                  = p?.brand || '';
+    document.getElementById('fCategory').value               = p?.category_id || '';
+    document.getElementById('fPrice').value                  = p?.price || '';
+    document.getElementById('fDiscount').value               = p?.discount || 0;
+    document.getElementById('fStock').value                  = p?.stock || 0;
+    document.getElementById('fDesc').value                   = p?.description || '';
+    document.getElementById('fActive').value                 = p?.is_active ?? 1;
+    document.getElementById('statusGroup').style.display     = p ? 'block' : 'none';
 
-    // Reset ảnh
+    // Reset ảnh phụ
+    thumbFiles    = [];
+    existingThumb = [];
+
+    // Reset ảnh chính
     removeMainImg();
-    thumbFiles = [];
-    renderThumbGrid();
 
-    // Nếu sửa và có ảnh cũ
+    // Nếu đang SỬA sản phẩm và có ảnh cũ → hiện ảnh cũ
     if (p?.image_url) {
       const preview = document.getElementById('mainImgPreview');
-      preview.src = p.image_url;
+      // ✅ FIX: Dùng image_url trực tiếp (có thể là đường dẫn tương đối)
+      preview.src   = p.image_url;
       preview.style.display = 'block';
-      document.getElementById('removeMainBtn').style.display = 'inline-flex';
+      document.getElementById('removeMainBtn').style.display  = 'inline-flex';
       document.getElementById('mainUploadZone').style.display = 'none';
     }
+
+    // Nếu có ảnh phụ cũ từ DB
+    if (p?.images?.length) {
+      existingThumb = p.images.map(img => img.image_url);
+    }
+    renderThumbGrid();
 
     document.getElementById('productModal').style.display = 'flex';
   }
@@ -327,41 +351,54 @@
     if (p) openModal(p);
   }
 
+  // =============================================
+  // LƯU SẢN PHẨM (POST / PUT)
+  // =============================================
   async function saveProduct() {
-    const id        = document.getElementById('editId').value;
-    const mainFile  = document.getElementById('fMainImage').files[0];
-    const name      = document.getElementById('fName').value.trim();
-    const btn       = document.getElementById('saveBtn');
+    const id    = document.getElementById('editId').value;
+    const name  = document.getElementById('fName').value.trim();
+    const price = document.getElementById('fPrice').value;
 
-    if (!name) { showToast('Vui lòng nhập tên sản phẩm!', 'error'); return; }
+    if (!name)  { showToast('Vui lòng nhập tên sản phẩm!', 'error'); return; }
+    if (!price) { showToast('Vui lòng nhập giá sản phẩm!', 'error'); return; }
 
+    const btn = document.getElementById('saveBtn');
     btn.disabled = true; btn.textContent = 'Đang lưu...';
 
     try {
       const token    = localStorage.getItem('token');
       const formData = new FormData();
+
+      // Thông tin sản phẩm
       formData.append('category_id',  document.getElementById('fCategory').value);
       formData.append('product_name', name);
       formData.append('brand',        document.getElementById('fBrand').value.trim());
-      formData.append('price',        document.getElementById('fPrice').value);
+      formData.append('price',        price);
       formData.append('discount',     document.getElementById('fDiscount').value || 0);
       formData.append('stock',        document.getElementById('fStock').value || 0);
       formData.append('description',  document.getElementById('fDesc').value);
       formData.append('is_active',    document.getElementById('fActive').value);
 
-      // Ảnh chính
-      if (mainFile) formData.append('image', mainFile);
-      else if (document.getElementById('mainImgPreview').src)
-        formData.append('image_url', document.getElementById('mainImgPreview').src);
+      // ✅ Ảnh chính: chỉ gửi file nếu user chọn file mới
+      const mainFile = document.getElementById('fMainImage').files[0];
+      if (mainFile) {
+        formData.append('image', mainFile);  // multer nhận field 'image'
+      }
+      // Không gửi image_url khi sửa → backend giữ nguyên ảnh cũ
 
-      // Ảnh phụ (tối đa 4)
-      thumbFiles.forEach((file, i) => formData.append('thumb_images', file));
+      // ✅ Ảnh phụ mới (nếu có)
+      thumbFiles.forEach(file => formData.append('thumb_images', file));
 
-      const url    = id ? `http://localhost:5000/api/products/${id}` : 'http://localhost:5000/api/products';
+      const url    = `http://localhost:5000/api/products${id ? '/' + id : ''}`;
       const method = id ? 'PUT' : 'POST';
-      const res    = await fetch(url, { method, headers: { 'Authorization': 'Bearer ' + token }, body: formData });
-      const data   = await res.json();
-      if (!res.ok) throw new Error(data.message);
+
+      const res  = await fetch(url, {
+        method,
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: formData
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Có lỗi xảy ra!');
 
       showToast(id ? 'Cập nhật thành công!' : 'Thêm sản phẩm thành công!', 'success');
       closeModal();
@@ -370,10 +407,16 @@
     finally { btn.disabled = false; btn.textContent = 'Lưu sản phẩm'; }
   }
 
+  // =============================================
+  // XÓA SẢN PHẨM
+  // =============================================
   async function deleteProduct(id, name) {
     if (!confirm(`Xóa sản phẩm "${name}"?`)) return;
-    try { await Products.delete(id); showToast('Đã xóa!', 'success'); await loadProducts(); }
-    catch(e) { showToast(e.message, 'error'); }
+    try {
+      await Products.delete(id);
+      showToast('Đã xóa sản phẩm!', 'success');
+      await loadProducts();
+    } catch(e) { showToast(e.message, 'error'); }
   }
 
   loadData();

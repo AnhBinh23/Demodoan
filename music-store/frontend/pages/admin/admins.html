@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Phân quyền Admin — Admin</title>
+  <link rel="stylesheet" href="admin.css"/>
+  <style>
+    .role-badge {
+      padding:.25rem .75rem; border-radius:20px; font-size:.78rem; font-weight:700; letter-spacing:.03em;
+    }
+    .role-super_admin { background:rgba(186,85,211,.2); color:#da70d6; border:1px solid rgba(186,85,211,.4); }
+    .role-admin       { background:rgba(201,168,76,.2);  color:var(--gold); border:1px solid rgba(201,168,76,.4); }
+    .role-staff       { background:rgba(100,149,237,.2); color:#6495ed; border:1px solid rgba(100,149,237,.4); }
+    .perm-grid { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
+    .perm-item {
+      display:flex; align-items:center; justify-content:space-between;
+      background:var(--bg3); border:1px solid var(--border);
+      border-radius:var(--radius); padding:.6rem .9rem;
+    }
+    .perm-label { font-size:.84rem; }
+    .toggle-switch { position:relative; width:40px; height:22px; flex-shrink:0; }
+    .toggle-switch input { opacity:0; width:0; height:0; }
+    .toggle-slider {
+      position:absolute; inset:0; background:var(--bg2); border-radius:99px;
+      cursor:pointer; transition:.2s; border:1px solid var(--border);
+    }
+    .toggle-slider::before {
+      content:''; position:absolute; width:16px; height:16px;
+      left:2px; top:2px; background:var(--muted); border-radius:50%; transition:.2s;
+    }
+    .toggle-switch input:checked + .toggle-slider { background:var(--gold); border-color:var(--gold); }
+    .toggle-switch input:checked + .toggle-slider::before { transform:translateX(18px); background:#000; }
+    .admin-card {
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:1.2rem; margin-bottom:1rem;
+    }
+    .warning-box {
+      background:rgba(255,165,0,.08); border:1px solid rgba(255,165,0,.3);
+      border-radius:var(--radius); padding:.8rem 1rem; font-size:.84rem;
+      color:orange; margin-bottom:1.5rem;
+    }
+  </style>
+</head>
+<body>
+<div id="sidebar-placeholder"></div>
+
+<main class="admin-main">
+  <div class="page-header">
+    <h1>🔐 Phân quyền Admin</h1>
+    <p>Quản lý tài khoản quản trị và phân quyền chi tiết</p>
+  </div>
+
+  <div class="warning-box">
+    ⚠️ Trang này chỉ dành cho <strong>Super Admin</strong>. Thay đổi quyền sẽ có hiệu lực ngay lập tức khi người dùng đăng nhập lại.
+  </div>
+
+  <!-- PHÂN CẤP QUYỀN -->
+  <div class="admin-table-wrap" style="margin-bottom:1.5rem">
+    <div class="table-toolbar"><h3 style="font-size:1rem">📊 Phân cấp quyền hạn</h3></div>
+    <div style="padding:1rem;display:grid;grid-template-columns:repeat(3,1fr);gap:1rem">
+      <div style="background:rgba(186,85,211,.06);border:1px solid rgba(186,85,211,.3);border-radius:var(--radius-lg);padding:1rem;text-align:center">
+        <div style="font-size:1.8rem">👑</div>
+        <div class="role-badge role-super_admin" style="margin:.5rem 0">Super Admin</div>
+        <p style="font-size:.82rem;color:var(--muted);margin:0">Toàn quyền hệ thống, quản lý admin khác, xem mọi báo cáo</p>
+      </div>
+      <div style="background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.3);border-radius:var(--radius-lg);padding:1rem;text-align:center">
+        <div style="font-size:1.8rem">🛡️</div>
+        <div class="role-badge role-admin" style="margin:.5rem 0">Admin</div>
+        <p style="font-size:.82rem;color:var(--muted);margin:0">Quản lý cửa hàng, trung tâm, đơn hàng, không quản lý được admin khác</p>
+      </div>
+      <div style="background:rgba(100,149,237,.06);border:1px solid rgba(100,149,237,.3);border-radius:var(--radius-lg);padding:1rem;text-align:center">
+        <div style="font-size:1.8rem">👤</div>
+        <div class="role-badge role-staff" style="margin:.5rem 0">Staff (Nhân viên)</div>
+        <p style="font-size:.82rem;color:var(--muted);margin:0">Chỉ được làm những gì được cấp phép cụ thể bên dưới</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DANH SÁCH ADMIN -->
+  <div class="admin-table-wrap">
+    <div class="table-toolbar" style="justify-content:space-between">
+      <h3 style="font-size:1rem">👥 Danh sách quản trị viên</h3>
+      <button class="btn btn-primary btn-sm" onclick="openAddModal()">+ Thêm Admin/Staff</button>
+    </div>
+    <div id="adminList" style="padding:1rem">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+</main>
+
+<!-- MODAL THÊM ADMIN -->
+<div class="modal-overlay" id="addModal" style="display:none">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <h3>Nâng quyền tài khoản</h3>
+      <button class="modal-close" onclick="document.getElementById('addModal').style.display='none'">✕</button>
+    </div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem">Nhập email tài khoản đã có trong hệ thống để nâng lên Staff/Admin</p>
+    <div class="form-group">
+      <label class="form-label">Email tài khoản *</label>
+      <input type="email" class="form-input" id="addEmail" placeholder="nhanvien@email.com"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Cấp quyền</label>
+      <select class="form-select" id="addRole">
+        <option value="staff">Staff — Nhân viên</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('addModal').style.display='none'">Hủy</button>
+      <button class="btn btn-primary" onclick="promoteUser()">Nâng quyền</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SỬA QUYỀN -->
+<div class="modal-overlay" id="permModal" style="display:none">
+  <div class="modal" style="max-width:540px;max-height:90vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3 id="permTitle">Chỉnh quyền</h3>
+      <button class="modal-close" onclick="document.getElementById('permModal').style.display='none'">✕</button>
+    </div>
+    <input type="hidden" id="permUserId"/>
+    <div class="form-group">
+      <label class="form-label">Vai trò</label>
+      <select class="form-select" id="permRole">
+        <option value="staff">Staff — Nhân viên</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div id="permSection">
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:.8rem">
+        Quyền chi tiết (chỉ áp dụng khi vai trò là <strong>Staff</strong>):
+      </p>
+      <div class="perm-grid" id="permGrid"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('permModal').style.display='none'">Hủy</button>
+      <button class="btn btn-danger btn-sm"  onclick="demoteUser()"  style="margin-right:auto">Hạ xuống Customer</button>
+      <button class="btn btn-primary" onclick="savePermissions()">Lưu quyền</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="../../js/api.js"></script>
+<script src="sidebar.js"></script>
+<script>
+  renderSidebar('admins');
+
+  const PERMS = [
+    { key:'can_manage_products',  label:'🎵 Quản lý sản phẩm' },
+    { key:'can_manage_orders',    label:'📦 Quản lý đơn hàng' },
+    { key:'can_manage_users',     label:'👥 Quản lý khách hàng' },
+    { key:'can_manage_teachers',  label:'👨‍🏫 Quản lý giáo viên' },
+    { key:'can_manage_students',  label:'🎓 Quản lý học viên' },
+    { key:'can_manage_classes',   label:'📅 Quản lý lớp học' },
+    { key:'can_manage_finance',   label:'💰 Thu học phí' },
+    { key:'can_view_reports',     label:'📊 Xem báo cáo' },
+  ];
+
+  let allAdmins = [];
+
+  async function loadAdmins() {
+    try {
+      allAdmins = await api.get('/center/admins');
+      renderAdminList(allAdmins);
+    } catch(e) { showToast(e.message,'error'); }
+  }
+
+  function renderAdminList(data) {
+    const container = document.getElementById('adminList');
+    if (!data.length) { container.innerHTML = '<div class="empty-state"><div class="icon">👤</div><p>Chưa có admin nào</p></div>'; return; }
+
+    container.innerHTML = data.map(u => {
+      const isSuperAdmin = u.role === 'super_admin';
+      const permsGranted = PERMS.filter(p => u[p.key]).map(p => p.label).join(', ');
+      return `
+        <div class="admin-card">
+          <div style="display:flex;align-items:center;gap:1rem">
+            <div style="width:44px;height:44px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:var(--gold);flex-shrink:0">
+              ${(u.full_name?.[0]||'?').toUpperCase()}
+            </div>
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+                <strong>${u.full_name}</strong>
+                <span class="role-badge role-${u.role}">${u.role==='super_admin'?'👑 Super Admin':u.role==='admin'?'🛡️ Admin':'👤 Staff'}</span>
+                <span class="badge ${u.is_active?'badge-active':'badge-inactive'}">${u.is_active?'Đang hoạt động':'Đã khóa'}</span>
+              </div>
+              <div style="font-size:.82rem;color:var(--muted);margin-top:.2rem">${u.email}</div>
+              ${u.role==='staff' && permsGranted ? `<div style="font-size:.78rem;color:var(--muted);margin-top:.3rem">Quyền: ${permsGranted||'Chưa cấp quyền'}</div>` : ''}
+            </div>
+            ${!isSuperAdmin ? `<button class="btn btn-outline btn-sm" onclick="openPermModal(${u.user_id})">✏️ Chỉnh quyền</button>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function openAddModal() {
+    document.getElementById('addEmail').value = '';
+    document.getElementById('addRole').value  = 'staff';
+    document.getElementById('addModal').style.display = 'flex';
+  }
+
+  async function promoteUser() {
+    const email = document.getElementById('addEmail').value.trim();
+    const role  = document.getElementById('addRole').value;
+    if (!email) { showToast('Nhập email!','error'); return; }
+    try {
+      // Tìm user theo email rồi nâng quyền
+      const users = await api.get('/users/admin/all');
+      const user  = users.find(u => u.email === email);
+      if (!user) { showToast('Không tìm thấy tài khoản!','error'); return; }
+      await api.post('/center/admins/permissions', { user_id: user.user_id, role });
+      showToast('Nâng quyền thành công!','success');
+      document.getElementById('addModal').style.display = 'none';
+      await loadAdmins();
+    } catch(e) { showToast(e.message,'error'); }
+  }
+
+  function openPermModal(userId) {
+    const u = allAdmins.find(x => x.user_id === userId);
+    if (!u) return;
+    document.getElementById('permTitle').textContent = `Chỉnh quyền: ${u.full_name}`;
+    document.getElementById('permUserId').value      = userId;
+    document.getElementById('permRole').value        = u.role;
+
+    document.getElementById('permGrid').innerHTML = PERMS.map(p => `
+      <div class="perm-item">
+        <span class="perm-label">${p.label}</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="perm_${p.key}" ${u[p.key] ? 'checked' : ''}/>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>`).join('');
+
+    document.getElementById('permModal').style.display = 'flex';
+  }
+
+  async function savePermissions() {
+    const user_id = document.getElementById('permUserId').value;
+    const role    = document.getElementById('permRole').value;
+    const permissions = {};
+    PERMS.forEach(p => { permissions[p.key] = document.getElementById('perm_'+p.key)?.checked ? 1 : 0; });
+    try {
+      await api.post('/center/admins/permissions', { user_id, role, permissions });
+      showToast('Lưu quyền thành công!','success');
+      document.getElementById('permModal').style.display = 'none';
+      await loadAdmins();
+    } catch(e) { showToast(e.message,'error'); }
+  }
+
+  async function demoteUser() {
+    const user_id = document.getElementById('permUserId').value;
+    const u = allAdmins.find(x => x.user_id == user_id);
+    if (!confirm(`Hạ "${u?.full_name}" xuống Customer?`)) return;
+    try {
+      await api.post('/center/admins/permissions', { user_id, role:'customer' });
+      showToast('Đã hạ quyền!','success');
+      document.getElementById('permModal').style.display = 'none';
+      await loadAdmins();
+    } catch(e) { showToast(e.message,'error'); }
+  }
+
+  loadAdmins();
+</script>
+</body>
+</html>

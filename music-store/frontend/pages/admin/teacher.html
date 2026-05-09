@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quản lý Giáo viên — Admin</title>
+  <link rel="stylesheet" href="admin.css"/>
+  <style>
+    .avatar-circle {
+      width:42px; height:42px; border-radius:50%;
+      background:var(--gold-dim); display:flex;
+      align-items:center; justify-content:center;
+      font-weight:700; color:var(--gold-light); font-size:1rem; flex-shrink:0;
+    }
+    .avatar-circle img { width:100%; height:100%; border-radius:50%; object-fit:cover; }
+    .specialty-badge {
+      padding:.2rem .6rem; border-radius:20px; font-size:.75rem; font-weight:600;
+      background:rgba(201,168,76,.15); color:var(--gold);
+    }
+    .upload-zone {
+      border:2px dashed var(--border); border-radius:var(--radius); padding:1rem;
+      text-align:center; cursor:pointer; position:relative; background:var(--bg3); transition:.2s;
+    }
+    .upload-zone:hover { border-color:var(--gold); }
+    .upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .avatar-preview { width:80px; height:80px; border-radius:50%; object-fit:cover; display:none; margin:0.5rem auto 0; border:2px solid var(--gold); }
+  </style>
+</head>
+<body>
+<div id="sidebar-placeholder"></div>
+
+<main class="admin-main">
+  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <h1>👨‍🏫 Giáo viên</h1>
+      <p>Quản lý đội ngũ giáo viên trung tâm</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal()">+ Thêm giáo viên</button>
+  </div>
+
+  <!-- STATS NHANH -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem" id="teacherStats">
+    <div class="stat-card"><div class="stat-icon" style="background:rgba(201,168,76,.1)">👨‍🏫</div><div class="stat-info"><div class="value" id="stTotal">—</div><div class="label">Tổng giáo viên</div></div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:rgba(76,175,128,.1)">✅</div><div class="stat-info"><div class="value" id="stActive">—</div><div class="label">Đang làm</div></div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:rgba(100,149,237,.1)">🎓</div><div class="stat-info"><div class="value" id="stClasses">—</div><div class="label">Lớp đang dạy</div></div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:rgba(186,85,211,.1)">🎵</div><div class="stat-info"><div class="value" id="stSpec">—</div><div class="label">Chuyên môn</div></div></div>
+  </div>
+
+  <div class="admin-table-wrap">
+    <div class="table-toolbar">
+      <div class="search-input"><span>🔍</span><input type="text" placeholder="Tìm giáo viên..." id="searchInput" oninput="filterTeachers()"/></div>
+      <select class="form-select" style="width:auto" id="specFilter" onchange="filterTeachers()">
+        <option value="">Tất cả chuyên môn</option>
+        <option>Piano</option><option>Guitar</option><option>Violin</option><option>Organ</option>
+      </select>
+      <select class="form-select" style="width:auto" id="statusFilter" onchange="filterTeachers()">
+        <option value="">Tất cả trạng thái</option>
+        <option value="1">Đang làm</option><option value="0">Đã nghỉ</option>
+      </select>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Giáo viên</th><th>Chuyên môn</th><th>Kinh nghiệm</th><th>Lớp đang dạy</th><th>Lương/buổi</th><th>Ngày vào</th><th>Trạng thái</th><th>Thao tác</th></tr>
+      </thead>
+      <tbody id="teachersBody">
+        <tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="teacherModal" style="display:none">
+  <div class="modal" style="max-width:580px;max-height:90vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3 id="modalTitle">Thêm giáo viên</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <input type="hidden" id="editId"/>
+
+    <!-- Ảnh đại diện -->
+    <div class="form-group" style="text-align:center">
+      <div class="upload-zone" id="avatarZone" style="display:inline-block;width:120px;height:120px;border-radius:50%;padding:.5rem">
+        <input type="file" id="fAvatar" accept="image/*" onchange="previewAvatar(this)"/>
+        <div style="font-size:2rem">📷</div>
+        <p style="font-size:.72rem;color:var(--muted);margin:0">Chọn ảnh</p>
+      </div>
+      <img id="avatarPreview" class="avatar-preview" alt=""/>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Họ và tên *</label>
+        <input type="text" class="form-input" id="fName" placeholder="Nguyễn Thị Lan"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input type="email" class="form-input" id="fEmail" placeholder="giaovien@email.com"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Số điện thoại</label>
+        <input type="text" class="form-input" id="fPhone" placeholder="090xxxxxxx"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Chuyên môn *</label>
+        <select class="form-select" id="fSpecialty">
+          <option value="">-- Chọn --</option>
+          <option>Piano</option><option>Guitar</option><option>Violin</option><option>Organ</option><option>Thanh nhạc</option><option>Trống</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Bằng cấp / Chứng chỉ</label>
+        <input type="text" class="form-input" id="fDegree" placeholder="Cử nhân Âm nhạc"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Số năm kinh nghiệm</label>
+        <input type="number" class="form-input" id="fExp" placeholder="5" min="0"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Lương</label>
+        <input type="number" class="form-input" id="fSalary" placeholder="200000"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Loại lương</label>
+        <select class="form-select" id="fSalaryType">
+          <option value="per_session">Theo buổi</option>
+          <option value="monthly">Theo tháng</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Ngày vào làm</label>
+        <input type="date" class="form-input" id="fJoinDate"/>
+      </div>
+      <div class="form-group" id="statusGroup" style="display:none">
+        <label class="form-label">Trạng thái</label>
+        <select class="form-select" id="fActive">
+          <option value="1">Đang làm</option>
+          <option value="0">Đã nghỉ</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Giới thiệu bản thân</label>
+      <textarea class="form-textarea" id="fBio" placeholder="Kinh nghiệm, thành tích..." style="min-height:80px"></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Hủy</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveTeacher()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="../../js/api.js"></script>
+<script src="sidebar.js"></script>
+<script>
+  renderSidebar('teachers');
+  let allTeachers = [];
+
+  async function loadTeachers() {
+    try {
+      allTeachers = await api.get('/center/teachers');
+      renderStats(allTeachers);
+      renderTable(allTeachers);
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  function renderStats(data) {
+    document.getElementById('stTotal').textContent   = data.length;
+    document.getElementById('stActive').textContent  = data.filter(t => t.is_active).length;
+    document.getElementById('stClasses').textContent = data.reduce((s,t) => s + (t.active_classes||0), 0);
+    const specs = [...new Set(data.map(t => t.specialty))].length;
+    document.getElementById('stSpec').textContent    = specs;
+  }
+
+  function renderTable(data) {
+    const tbody = document.getElementById('teachersBody');
+    if (!data.length) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">👨‍🏫</div><p>Chưa có giáo viên nào</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = data.map(t => `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:.8rem">
+            <div class="avatar-circle">
+              ${t.avatar
+                ? `<img src="${t.avatar}" alt=""/>`
+                : (t.full_name?.[0]||'?').toUpperCase()}
+            </div>
+            <div>
+              <div style="font-weight:600">${t.full_name}</div>
+              <div style="font-size:.78rem;color:var(--muted)">${t.email}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="specialty-badge">${t.specialty}</span></td>
+        <td style="color:var(--muted)">${t.experience_years || 0} năm</td>
+        <td>
+          <span style="color:var(--gold);font-weight:600">${t.active_classes || 0}</span>
+          <span style="color:var(--muted);font-size:.8rem"> / ${t.total_classes || 0} lớp</span>
+        </td>
+        <td style="color:var(--gold)">${formatPrice(t.salary)} <span style="color:var(--muted);font-size:.75rem">${t.salary_type==='monthly'?'/tháng':'/buổi'}</span></td>
+        <td style="color:var(--muted);font-size:.85rem">${t.join_date ? new Date(t.join_date).toLocaleDateString('vi-VN') : '—'}</td>
+        <td><span class="badge ${t.is_active ? 'badge-active' : 'badge-inactive'}">${t.is_active ? 'Đang làm' : 'Đã nghỉ'}</span></td>
+        <td style="display:flex;gap:.4rem">
+          <button class="btn btn-outline btn-sm" onclick="editTeacher(${t.teacher_id})">✏️ Sửa</button>
+          <button class="btn btn-danger  btn-sm" onclick="deleteTeacher(${t.teacher_id},'${t.full_name.replace(/'/g,"\\'")}')">🗑</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  function filterTeachers() {
+    const q    = document.getElementById('searchInput').value.toLowerCase();
+    const spec = document.getElementById('specFilter').value;
+    const sta  = document.getElementById('statusFilter').value;
+    renderTable(allTeachers.filter(t =>
+      (!q    || t.full_name.toLowerCase().includes(q) || t.email.toLowerCase().includes(q)) &&
+      (!spec || t.specialty === spec) &&
+      (sta === '' || String(t.is_active) === sta)
+    ));
+  }
+
+  function previewAvatar(input) {
+    if (!input.files?.[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const prev = document.getElementById('avatarPreview');
+      prev.src = e.target.result; prev.style.display = 'block';
+      document.getElementById('avatarZone').style.display = 'none';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+
+  function resetAvatarZone() {
+    document.getElementById('avatarPreview').style.display = 'none';
+    document.getElementById('avatarPreview').src = '';
+    document.getElementById('avatarZone').style.display = 'inline-block';
+    document.getElementById('fAvatar').value = '';
+  }
+
+  function openModal(t = null) {
+    document.getElementById('modalTitle').textContent = t ? 'Sửa giáo viên' : 'Thêm giáo viên';
+    document.getElementById('editId').value      = t?.teacher_id || '';
+    document.getElementById('fName').value       = t?.full_name || '';
+    document.getElementById('fEmail').value      = t?.email || '';
+    document.getElementById('fPhone').value      = t?.phone || '';
+    document.getElementById('fSpecialty').value  = t?.specialty || '';
+    document.getElementById('fDegree').value     = t?.degree || '';
+    document.getElementById('fExp').value        = t?.experience_years || 0;
+    document.getElementById('fSalary').value     = t?.salary || '';
+    document.getElementById('fSalaryType').value = t?.salary_type || 'per_session';
+    document.getElementById('fJoinDate').value   = t?.join_date?.split('T')[0] || '';
+    document.getElementById('fBio').value        = t?.bio || '';
+    document.getElementById('fActive').value     = t?.is_active ?? 1;
+    document.getElementById('statusGroup').style.display = t ? 'block' : 'none';
+    resetAvatarZone();
+    if (t?.avatar) {
+      document.getElementById('avatarPreview').src = t.avatar;
+      document.getElementById('avatarPreview').style.display = 'block';
+      document.getElementById('avatarZone').style.display = 'none';
+    }
+    document.getElementById('teacherModal').style.display = 'flex';
+  }
+
+  function closeModal() { document.getElementById('teacherModal').style.display = 'none'; }
+
+  function editTeacher(id) {
+    const t = allTeachers.find(x => x.teacher_id === id);
+    if (t) openModal(t);
+  }
+
+  async function saveTeacher() {
+    const id = document.getElementById('editId').value;
+    const name = document.getElementById('fName').value.trim();
+    const spec = document.getElementById('fSpecialty').value;
+    if (!name || !spec) { showToast('Vui lòng điền đủ thông tin!', 'error'); return; }
+
+    const fd = new FormData();
+    fd.append('full_name',        name);
+    fd.append('email',            document.getElementById('fEmail').value.trim());
+    fd.append('phone',            document.getElementById('fPhone').value.trim());
+    fd.append('specialty',        spec);
+    fd.append('degree',           document.getElementById('fDegree').value.trim());
+    fd.append('experience_years', document.getElementById('fExp').value || 0);
+    fd.append('salary',           document.getElementById('fSalary').value || 0);
+    fd.append('salary_type',      document.getElementById('fSalaryType').value);
+    fd.append('join_date',        document.getElementById('fJoinDate').value);
+    fd.append('bio',              document.getElementById('fBio').value.trim());
+    fd.append('is_active',        document.getElementById('fActive').value);
+    const avatarFile = document.getElementById('fAvatar').files[0];
+    if (avatarFile) fd.append('avatar', avatarFile);
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true; btn.textContent = 'Đang lưu...';
+    try {
+      const token = localStorage.getItem('token');
+      const url    = `http://localhost:5000/api/center/teachers${id ? '/' + id : ''}`;
+      const method = id ? 'PUT' : 'POST';
+      const res    = await fetch(url, { method, headers: { 'Authorization': 'Bearer ' + token }, body: fd });
+      const data   = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      showToast(id ? 'Cập nhật thành công!' : 'Thêm giáo viên thành công!', 'success');
+      closeModal(); await loadTeachers();
+    } catch(e) { showToast(e.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Lưu'; }
+  }
+
+  async function deleteTeacher(id, name) {
+    if (!confirm(`Xóa giáo viên "${name}"?`)) return;
+    try {
+      await api.delete('/center/teachers/' + id);
+      showToast('Đã xóa giáo viên!', 'success'); await loadTeachers();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  loadTeachers();
+</script>
+</body>
+</html>

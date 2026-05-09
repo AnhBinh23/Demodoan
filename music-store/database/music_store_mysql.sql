@@ -231,3 +231,57 @@ INSERT INTO banners (title, image_url, link_url, sort_order) VALUES
 ('Khuyến mãi Piano tháng 5',  '/images/banners/banner1.jpg', '/products?category=1', 1),
 ('Guitar cho người mới học',   '/images/banners/banner2.jpg', '/products?category=3', 2),
 ('Violin chính hãng giá tốt',  '/images/banners/banner3.jpg', '/products?category=4', 3);
+
+-- =============================================
+-- CẬP NHẬT PHÂN QUYỀN ADMIN
+-- Chạy file này để thêm role mới vào hệ thống
+-- =============================================
+
+USE music_store;
+
+-- Cập nhật cột role trong bảng users
+ALTER TABLE users
+  MODIFY COLUMN role ENUM('customer','staff','admin','super_admin') DEFAULT 'customer';
+
+-- Tạo tài khoản Super Admin (password: SuperAdmin@123)
+-- Thay $2b$10$... bằng hash thật khi chạy reset-password.js
+INSERT INTO users (full_name, email, phone, password, role) VALUES
+('Super Admin', 'superadmin@musicstore.com', '0900000001',
+ '$2b$10$hashedpasswordhere_super', 'super_admin')
+ON DUPLICATE KEY UPDATE role = 'super_admin';
+
+-- Tạo tài khoản Staff mẫu (password: Staff@123)
+INSERT INTO users (full_name, email, phone, password, role) VALUES
+('Nhân viên Linh', 'staff.linh@musicstore.com', '0900000002',
+ '$2b$10$hashedpasswordhere_staff', 'staff')
+ON DUPLICATE KEY UPDATE role = 'staff';
+
+-- =============================================
+-- BẢNG PHÂN QUYỀN CHI TIẾT (admin_permissions)
+-- Ghi lại ai được làm gì
+-- =============================================
+CREATE TABLE IF NOT EXISTS admin_permissions (
+    permission_id   INT AUTO_INCREMENT PRIMARY KEY,
+    user_id         INT          NOT NULL UNIQUE,
+    -- Quản lý cửa hàng
+    can_manage_products  TINYINT(1) DEFAULT 0,
+    can_manage_orders    TINYINT(1) DEFAULT 0,
+    can_manage_users     TINYINT(1) DEFAULT 0,
+    -- Quản lý trung tâm
+    can_manage_teachers  TINYINT(1) DEFAULT 0,
+    can_manage_students  TINYINT(1) DEFAULT 0,
+    can_manage_classes   TINYINT(1) DEFAULT 0,
+    can_manage_finance   TINYINT(1) DEFAULT 0,  -- Thu học phí, xem doanh thu
+    can_view_reports     TINYINT(1) DEFAULT 0,  -- Xem báo cáo thống kê
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- Quyền cho Staff mẫu (chỉ quản lý học viên + điểm danh)
+INSERT INTO admin_permissions
+  (user_id, can_manage_products, can_manage_orders, can_manage_users,
+   can_manage_teachers, can_manage_students, can_manage_classes,
+   can_manage_finance, can_view_reports)
+SELECT user_id, 0, 1, 0, 0, 1, 1, 0, 0
+FROM users WHERE email = 'staff.linh@musicstore.com'
+ON DUPLICATE KEY UPDATE can_manage_students=1, can_manage_classes=1, can_manage_orders=1;

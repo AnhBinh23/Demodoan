@@ -1,4 +1,3 @@
-require('./config/cloudinary');
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
@@ -29,10 +28,13 @@ app.use('/api/products',   require('./routes/products'));
 app.use('/api/cart',       require('./routes/cart'));
 app.use('/api/orders',     require('./routes/orders'));
 app.use('/api/users',      require('./routes/users'));
-app.use('/api/sheets', require('./routes/sheets'));
-app.use('/sheets', express.static(path.join(__dirname, 'public/sheets')));
+app.use('/api/sheets',  require('./routes/sheets'));
+app.use('/api/reviews', require('./routes/reviews'));   // ✅ Đánh giá
+app.use('/api/stats',   require('./routes/stats'));     // ✅ Thống kê
+app.use('/api/center',  require('./routes/center'));    // ✅ Trung tâm âm nhạc
+
 // Route kiểm tra server
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
     res.json({ message: '🎵 Ascent-Music API đang chạy!' });
 });
 

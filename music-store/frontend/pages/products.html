@@ -32,7 +32,20 @@
       <option value="price_desc">Giá giảm dần</option>
     </select>
   </div>
-
+<div style="display:flex;gap:0.8rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
+  <span style="font-size:0.83rem;color:var(--muted)">🔍 Lọc nâng cao:</span>
+  <input type="number" id="priceMin" placeholder="Giá từ (VNĐ)"
+    style="padding:0.35rem 0.7rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--cream);font-size:0.83rem;width:140px"
+    oninput="applyAdvancedFilter()"/>
+  <span style="color:var(--muted)">–</span>
+  <input type="number" id="priceMax" placeholder="Đến (VNĐ)"
+    style="padding:0.35rem 0.7rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--cream);font-size:0.83rem;width:140px"
+    oninput="applyAdvancedFilter()"/>
+  <input type="text" id="brandFilter" placeholder="Thương hiệu (Yamaha...)"
+    style="padding:0.35rem 0.7rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--cream);font-size:0.83rem;width:180px"
+    oninput="applyAdvancedFilter()"/>
+  <button onclick="clearAdvancedFilter()" style="padding:0.35rem 0.8rem;background:none;border:1px solid var(--border);border-radius:var(--radius);color:var(--muted);cursor:pointer;font-size:0.8rem">Xóa lọc</button>
+</div>
   <!-- SEARCH RESULT -->
   <div id="searchInfo" style="display:none;margin-bottom:1rem;font-size:0.9rem;color:var(--muted)"></div>
 
@@ -58,7 +71,29 @@
   let currentCategory = '';
   let currentSort = 'newest';
   let currentSearch = '';
+let _allLoaded = []; // lưu products đã tải để lọc client-side
 
+function applyAdvancedFilter() {
+    const minP  = parseFloat(document.getElementById('priceMin').value)  || 0;
+    const maxP  = parseFloat(document.getElementById('priceMax').value)  || Infinity;
+    const brand = document.getElementById('brandFilter').value.toLowerCase().trim();
+    const filtered = _allLoaded.filter(p => {
+        const fp = p.price * (1 - (p.discount||0) / 100);
+        return (fp >= minP && fp <= maxP) && (!brand || (p.brand||'').toLowerCase().includes(brand));
+    });
+    if (currentSort === 'price_asc')  filtered.sort((a,b) => a.price - b.price);
+    if (currentSort === 'price_desc') filtered.sort((a,b) => b.price - a.price);
+    document.getElementById('productsGrid').innerHTML = filtered.length
+        ? filtered.map(renderCard).join('')
+        : `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🔍</div><h3>Không có kết quả</h3></div>`;
+}
+
+function clearAdvancedFilter() {
+    document.getElementById('priceMin').value    = '';
+    document.getElementById('priceMax').value    = '';
+    document.getElementById('brandFilter').value = '';
+    document.getElementById('productsGrid').innerHTML = _allLoaded.map(renderCard).join('');
+}
   // Đọc params từ URL
   const params = new URLSearchParams(location.search);
   if (params.get('category_id')) currentCategory = params.get('category_id');
@@ -72,7 +107,6 @@
 
   // Hiện thanh tìm kiếm nếu có từ khóa
   if (currentSearch) {
-    document.getElementById('searchInput').value = currentSearch;
     document.getElementById('searchInfo').style.display = 'block';
     document.getElementById('searchInfo').innerHTML = `Kết quả tìm kiếm cho: <strong style="color:var(--gold)">"${currentSearch}"</strong>`;
   }
@@ -99,6 +133,7 @@
       }
 
       grid.innerHTML = products.map(renderCard).join('');
+      _allLoaded = products; 
       renderPagination(total_pages);
     } catch(e) {
       grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">⚠️</div><p>${e.message}</p></div>`;
@@ -158,7 +193,13 @@
   }
 
   function setSort(val) { currentSort = val; loadProducts(); }
-
+function clearSearch() {
+    currentSearch = '';
+    currentPage   = 1;
+    document.getElementById('searchInfo').style.display = 'none';
+    history.replaceState(null, '', location.pathname);
+    loadProducts();
+}
   async function addToCart(product_id, name) {
     if (!Auth.isLoggedIn()) {
       showToast('Vui lòng đăng nhập!', 'error');

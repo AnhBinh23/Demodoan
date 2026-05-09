@@ -10,11 +10,24 @@ async function request(path, options = {}) {
     return data;
 }
 
+// Hàm upload FormData (ảnh, file)
+async function uploadForm(path, formData, method = 'POST') {
+    const token = localStorage.getItem('token');
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(API_URL + path, { method, headers, body: formData });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Có lỗi xảy ra!');
+    return data;
+}
+
 const api = {
-    get:    (path)       => request(path),
-    post:   (path, body) => request(path, { method: 'POST',   body: JSON.stringify(body) }),
-    put:    (path, body) => request(path, { method: 'PUT',    body: JSON.stringify(body) }),
-    delete: (path)       => request(path, { method: 'DELETE' }),
+    get:      (path)           => request(path),
+    post:     (path, body)     => request(path, { method: 'POST',   body: JSON.stringify(body) }),
+    put:      (path, body)     => request(path, { method: 'PUT',    body: JSON.stringify(body) }),
+    delete:   (path)           => request(path, { method: 'DELETE' }),
+    postForm: (path, formData) => uploadForm(path, formData, 'POST'),  // ✅ MỚI
+    putForm:  (path, formData) => uploadForm(path, formData, 'PUT'),   // ✅ MỚI
 };
 
 const Auth = {
@@ -56,12 +69,26 @@ const Cart = {
 };
 
 const Orders = {
-    create:      (data) => api.post('/orders',           data),
-    getMyOrders: ()     => api.get('/orders/my-orders'),
-    getById:     (id)   => api.get('/orders/' + id),
-    cancel:      (id)   => api.put('/orders/' + id + '/cancel'),
+    create:       (data) => api.post('/orders',           data),
+    getMyOrders:  ()     => api.get('/orders/my-orders'),
+    getById:      (id)   => api.get('/orders/' + id),
+    cancel:       (id)   => api.put('/orders/' + id + '/cancel'),
+    getAllOrders:  ()     => api.get('/orders/admin/all'),
 };
 
+// ✅ MỚI: Reviews
+const Reviews = {
+    getByProduct: (product_id) => api.get('/reviews/product/' + product_id),
+    create:       (data)       => api.post('/reviews', data),
+    delete:       (id)         => api.delete('/reviews/' + id),
+};
+
+// ✅ MỚI: Stats
+const Stats = {
+    overview:     () => api.get('/stats/overview'),
+    revenueMonth: () => api.get('/stats/revenue-month'),
+    topProducts:  () => api.get('/stats/top-products'),
+};
 function formatPrice(price) {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 }
