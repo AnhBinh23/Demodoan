@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+// Xác thực token
 const verifyToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -13,6 +14,7 @@ const verifyToken = (req, res, next) => {
     }
 };
 
+// Phân cấp: customer < staff < admin < super_admin
 const ROLES = { customer: 0, staff: 1, admin: 2, super_admin: 3 };
 
 const requireRole = (minRole) => (req, res, next) => {
@@ -23,14 +25,22 @@ const requireRole = (minRole) => (req, res, next) => {
     });
 };
 
-const verifyAdmin      = requireRole('admin');
+// verifyAdmin: cho phép admin + super_admin (backward compatible)
+const verifyAdmin = (req, res, next) => {
+    verifyToken(req, res, () => {
+        if (req.user.role === 'admin' || req.user.role === 'super_admin') return next();
+        return res.status(403).json({ message: 'Bạn không có quyền thực hiện hành động này!' });
+    });
+};
+
 const verifySuperAdmin = requireRole('super_admin');
 const verifyStaff      = requireRole('staff');
 
+// Kiểm tra quyền chi tiết cho Staff
 const db = require('../config/db');
 const verifyPermission = (permField) => async (req, res, next) => {
     verifyToken(req, res, async () => {
-        if (['super_admin','admin'].includes(req.user.role)) return next();
+        if (req.user.role === 'admin' || req.user.role === 'super_admin') return next();
         if (req.user.role === 'staff') {
             try {
                 const [[perm]] = await db.query(

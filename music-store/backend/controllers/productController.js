@@ -31,11 +31,16 @@ const getAllProducts = async (req, res) => {
 
 const getProductById = async (req, res) => {
     try {
-        const [products] = await db.query(`SELECT p.*, c.category_name FROM products p
-            JOIN categories c ON p.category_id = c.category_id WHERE p.product_id = ? AND p.is_active = 1`, [req.params.id]);
+        const [products] = await db.query(
+            `SELECT p.*, c.category_name FROM products p
+             JOIN categories c ON p.category_id = c.category_id
+             WHERE p.product_id = ? AND p.is_active = 1`, [req.params.id]);
         if (!products.length) return res.status(404).json({ message: 'Không tìm thấy!' });
         const [images]  = await db.query('SELECT * FROM product_images WHERE product_id = ? ORDER BY is_primary DESC', [req.params.id]);
-        const [reviews] = await db.query(`SELECT r.*, u.full_name FROM reviews r JOIN users u ON r.user_id = u.user_id WHERE r.product_id = ? ORDER BY r.created_at DESC`, [req.params.id]);
+        const [reviews] = await db.query(
+            `SELECT r.*, u.full_name FROM reviews r
+             JOIN users u ON r.user_id = u.user_id
+             WHERE r.product_id = ? ORDER BY r.created_at DESC`, [req.params.id]);
         res.json({ ...products[0], images, reviews });
     } catch(err) { res.status(500).json({ message: 'Lỗi server!', error: err.message }); }
 };
@@ -43,9 +48,9 @@ const getProductById = async (req, res) => {
 const createProduct = async (req, res) => {
     try {
         const { category_id, product_name, description, price, discount, stock, brand } = req.body;
-        let image_url = req.body.image_url || null;
+        let image_url = null;
 
-        // Upload ảnh chính
+        // Upload ảnh chính lên Cloudinary
         if (req.files && req.files['image'] && req.files['image'][0]) {
             const result = await uploadToCloudinary(req.files['image'][0].buffer, 'ascent-music/products');
             image_url = result.secure_url;
@@ -69,34 +74,39 @@ const createProduct = async (req, res) => {
     } catch(err) { res.status(500).json({ message: 'Lỗi server!', error: err.message }); }
 };
 
-// SỬA SẢN PHẨM (Admin)
+// ✅ FIX: Dùng req.files thay vì req.file (vì route dùng .fields())
 const updateProduct = async (req, res) => {
     try {
         const { id } = req.params;
         const { category_id, product_name, description, price, discount, stock, brand, is_active } = req.body;
 
-        // Nếu có upload ảnh mới thì dùng, không thì giữ ảnh cũ
-        let imageUpdate = '';
-        const params = [category_id, product_name, description, price, discount, stock, brand, is_active];
-
-        if (req.file) {
-            imageUpdate = ', image_url=?';
-            params.push(`/images/products/${req.file.filename}`);
+        let image_url = null;
+        // Upload ảnh mới nếu có
+        if (req.files && req.files['image'] && req.files['image'][0]) {
+            const result = await uploadToCloudinary(req.files['image'][0].buffer, 'ascent-music/products');
+            image_url = result.secure_url;
         }
 
+        const sets   = ['category_id=?','product_name=?','description=?','price=?','discount=?','stock=?','brand=?','is_active=?'];
+        const params = [category_id, product_name, description, price, discount||0, stock||0, brand, is_active ?? 1];
+
+        if (image_url) { sets.push('image_url=?'); params.push(image_url); }
         params.push(id);
 
-        await db.query(
-            `UPDATE products SET category_id=?, product_name=?, description=?, price=?,
-             discount=?, stock=?, brand=?, is_active=?${imageUpdate} WHERE product_id=?`,
-            params
-        );
+        await db.query(`UPDATE products SET ${sets.join(',')} WHERE product_id=?`, params);
+
+        // Upload thêm ảnh phụ mới nếu có
+        const thumbFiles = req.files && req.files['thumb_images'] ? req.files['thumb_images'] : [];
+        for (const file of thumbFiles) {
+            const thumbResult = await uploadToCloudinary(file.buffer, 'ascent-music/products/thumbs');
+            await db.query('INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, 0)',
+                [id, thumbResult.secure_url]);
+        }
 
         res.json({ message: 'Cập nhật sản phẩm thành công!' });
-    } catch (err) {
-        res.status(500).json({ message: 'Lỗi server!', error: err.message });
-    }
+    } catch(err) { res.status(500).json({ message: 'Lỗi server!', error: err.message }); }
 };
+
 const deleteProduct = async (req, res) => {
     try {
         await db.query('UPDATE products SET is_active = 0 WHERE product_id = ?', [req.params.id]);
