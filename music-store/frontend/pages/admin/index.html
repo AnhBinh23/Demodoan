@@ -18,10 +18,10 @@
 
   <!-- STATS -->
   <div class="stats-grid" id="statsGrid">
-    <div class="stat-card"><div class="stat-icon" style="background:rgba(201,168,76,0.1)">📦</div><div class="stat-info"><div class="value" id="statProducts">...</div><div class="label">Sản phẩm</div></div></div>
-    <div class="stat-card"><div class="stat-icon" style="background:rgba(76,175,128,0.1)">🛍️</div><div class="stat-info"><div class="value" id="statOrders">...</div><div class="label">Đơn hàng</div></div></div>
-    <div class="stat-card"><div class="stat-icon" style="background:rgba(100,149,237,0.1)">👥</div><div class="stat-info"><div class="value" id="statUsers">...</div><div class="label">Khách hàng</div></div></div>
-    <div class="stat-card"><div class="stat-icon" style="background:rgba(186,85,211,0.1)">💰</div><div class="stat-info"><div class="value" id="statRevenue">...</div><div class="label">Doanh thu</div></div></div>
+    <div class="stat-card" id="cardProducts"><div class="stat-icon" style="background:rgba(201,168,76,0.1)">📦</div><div class="stat-info"><div class="value" id="statProducts">...</div><div class="label">Sản phẩm</div></div></div>
+    <div class="stat-card" id="cardOrders"><div class="stat-icon" style="background:rgba(76,175,128,0.1)">🛍️</div><div class="stat-info"><div class="value" id="statOrders">...</div><div class="label">Đơn hàng</div></div></div>
+    <div class="stat-card" id="cardUsers"><div class="stat-icon" style="background:rgba(100,149,237,0.1)">👥</div><div class="stat-info"><div class="value" id="statUsers">...</div><div class="label">Khách hàng</div></div></div>
+    <div class="stat-card" id="cardRevenue"><div class="stat-icon" style="background:rgba(186,85,211,0.1)">💰</div><div class="stat-info"><div class="value" id="statRevenue">...</div><div class="label">Doanh thu</div></div></div>
   </div>
 
   <!-- RECENT ORDERS -->
@@ -97,6 +97,21 @@
   }
 
   loadDashboard();
+
+  // Điều hướng khi bấm vào stat card
+  const cardLinks = {
+    cardProducts: 'products.html',
+    cardOrders:   'orders.html',
+    cardUsers:    'users.html',
+    cardRevenue:  'orders.html',
+  };
+  Object.entries(cardLinks).forEach(([id, url]) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => location.href = url);
+    }
+  });
 </script>
 </body>
 </html>

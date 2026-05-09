@@ -529,3 +529,26 @@ input, select, textarea { font-family: inherit; }
   .products-grid { grid-template-columns: 1fr; }
   .categories-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── LIGHT MODE (tự theo trình duyệt/hệ thống) ── */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg:         #f5f2eb;
+    --bg2:        #ffffff;
+    --bg3:        #edeae0;
+    --cream:      #1a1a2e;
+    --muted:      #6b6867;
+    --border:     rgba(180,140,60,0.2);
+    --shadow:     0 8px 32px rgba(0,0,0,0.1);
+    --gold-dim:   #f5e9c8;
+    --gold-light: #a07830;
+  }
+  .header        { background: rgba(245,242,235,0.95); }
+  .hero          { background: linear-gradient(135deg, #f5f2eb 0%, #ede8d5 50%, #f5f2eb 100%); }
+  .hero::before  { background: radial-gradient(ellipse 60% 70% at 70% 50%, rgba(201,168,76,0.06) 0%, transparent 70%); }
+  .sort-select   { color: var(--cream); }
+  .form-input    { color: var(--cream); }
+  .toast-success { background: #e8f5ef; }
+  .toast-error   { background: #fce8e8; }
+  .toast-info    { background: #fdf5e0; }
+}

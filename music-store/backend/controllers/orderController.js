@@ -18,6 +18,15 @@ const createOrder = async (req, res) => {
             return res.status(400).json({ message: 'Giỏ hàng trống!' });
         }
 
+        // ✅ BUG 4 FIX: Kiểm tra tồn kho trước khi đặt hàng
+        for (const item of cartItems) {
+            if (item.stock < item.quantity) {
+                return res.status(400).json({
+                    message: `Sản phẩm "${item.product_name}" chỉ còn ${item.stock} trong kho, không đủ số lượng yêu cầu (${item.quantity})!`
+                });
+            }
+        }
+
         // Tính tổng tiền
         const total_amount = cartItems.reduce((sum, item) => {
             const finalPrice = item.price * (1 - item.discount / 100);
@@ -100,9 +109,10 @@ const getOrderById = async (req, res) => {
 
 // HỦY ĐƠN HÀNG
 const cancelOrder = async (req, res) => {
+    const conn = await require('../config/db').getConnection();
     try {
         const { id } = req.params;
-        const [orders] = await db.query(
+        const [orders] = await conn.query(
             'SELECT * FROM orders WHERE order_id = ? AND user_id = ?',
             [id, req.user.user_id]
         );
@@ -111,10 +121,28 @@ const cancelOrder = async (req, res) => {
             return res.status(400).json({ message: 'Chỉ có thể hủy đơn hàng đang chờ xác nhận!' });
         }
 
-        await db.query('UPDATE orders SET status = "cancelled" WHERE order_id = ?', [id]);
+        await conn.beginTransaction();
+
+        // ✅ BUG 3 FIX: Hoàn lại tồn kho khi hủy đơn
+        const [details] = await conn.query(
+            'SELECT product_id, quantity FROM order_details WHERE order_id = ?', [id]
+        );
+        for (const item of details) {
+            await conn.query(
+                'UPDATE products SET stock = stock + ? WHERE product_id = ?',
+                [item.quantity, item.product_id]
+            );
+        }
+
+        await conn.query('UPDATE orders SET status = "cancelled" WHERE order_id = ?', [id]);
+
+        await conn.commit();
         res.json({ message: 'Hủy đơn hàng thành công!' });
     } catch (err) {
+        await conn.rollback();
         res.status(500).json({ message: 'Lỗi server!', error: err.message });
+    } finally {
+        conn.release();
     }
 };
 
@@ -143,6 +171,13 @@ const updateOrderStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
+
+        // ✅ SEC 3 FIX: Validate status hợp lệ
+        const allowedStatus = ['pending', 'confirmed', 'shipping', 'delivered', 'cancelled'];
+        if (!allowedStatus.includes(status)) {
+            return res.status(400).json({ message: 'Trạng thái không hợp lệ!' });
+        }
+
         await db.query('UPDATE orders SET status = ? WHERE order_id = ?', [status, id]);
         res.json({ message: 'Cập nhật trạng thái thành công!' });
     } catch (err) {
