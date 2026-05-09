@@ -1,10 +1,10 @@
 const express = require('express');
 const router  = express.Router();
-const { getStats, getRevenueByMonth, getTopProducts } = require('../controllers/statsController');
-const { verifyAdmin } = require('../middleware/auth');
+const { createReview, deleteReview, getReviewsByProduct } = require('../controllers/reviewController');
+const { verifyToken } = require('../middleware/auth');
 
-router.get('/overview',       verifyAdmin, getStats);
-router.get('/revenue-month',  verifyAdmin, getRevenueByMonth);
-router.get('/top-products',   verifyAdmin, getTopProducts);
+router.get('/product/:product_id', getReviewsByProduct);
+router.post('/',      verifyToken, createReview);
+router.delete('/:id', verifyToken, deleteReview);
 
 module.exports = router;

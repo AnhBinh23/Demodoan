@@ -18,8 +18,7 @@ const ROLES = { customer: 0, staff: 1, admin: 2, super_admin: 3 };
 const requireRole = (minRole) => (req, res, next) => {
     verifyToken(req, res, () => {
         const userLevel = ROLES[req.user.role] ?? 0;
-        const minLevel  = ROLES[minRole] ?? 99;
-        if (userLevel >= minLevel) return next();
+        if (userLevel >= (ROLES[minRole] ?? 99)) return next();
         return res.status(403).json({ message: 'Bạn không có quyền thực hiện!' });
     });
 };
@@ -31,7 +30,7 @@ const verifyStaff      = requireRole('staff');
 const db = require('../config/db');
 const verifyPermission = (permField) => async (req, res, next) => {
     verifyToken(req, res, async () => {
-        if (req.user.role === 'super_admin' || req.user.role === 'admin') return next();
+        if (['super_admin','admin'].includes(req.user.role)) return next();
         if (req.user.role === 'staff') {
             try {
                 const [[perm]] = await db.query(
