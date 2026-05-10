@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { sendOrderConfirm } = require('../config/email');
 
 // ĐẶT HÀNG
 const createOrder = async (req, res) => {
@@ -62,6 +63,19 @@ const createOrder = async (req, res) => {
         await conn.query('DELETE FROM cart WHERE user_id = ?', [user_id]);
 
         await conn.commit();
+        // Gửi email xác nhận (bất đồng bộ)
+        try {
+            const [[user]] = await db.query('SELECT email FROM users WHERE user_id=?', [user_id]);
+            if (user?.email) {
+                const emailItems = cartItems.map(i => ({
+                    product_name: i.product_name, quantity: i.quantity,
+                    price: i.price * (1 - i.discount/100) * i.quantity
+                }));
+                sendOrderConfirm({ to:user.email, order_id, receiver_name, items:emailItems,
+                    total_amount, shipping_address, payment_method: payment_method||'cod'
+                }).catch(err => console.error('Email lỗi:', err.message));
+            }
+        } catch(emailErr) { console.error('Email lỗi:', emailErr.message); }
         res.status(201).json({ message: 'Đặt hàng thành công!', order_id });
     } catch (err) {
         await conn.rollback();

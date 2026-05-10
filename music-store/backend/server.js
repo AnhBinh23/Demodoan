@@ -24,6 +24,8 @@ app.use('/api/stats',       require('./routes/stats'));
 app.use('/api/news',        require('./routes/news'));
 app.use('/api/center',      require('./routes/center'));
 app.use('/api/timekeeping', require('./routes/timekeeping'));
+app.use('/api/email',       require('./routes/email'));
+app.use('/api/excel',       require('./routes/excel'));
 
 
 app.get('/api', (req, res) => res.json({ message: '🎵 Ascent-Music API đang chạy!' }));
