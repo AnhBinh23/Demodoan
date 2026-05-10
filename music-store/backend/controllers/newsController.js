@@ -1,6 +1,3 @@
-const db = require('../config/db');
-
-// Tạo slug từ tiêu đề
 const toSlug = (str) => str.toLowerCase()
     .replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g,'a')
     .replace(/[èéẹẻẽêềếệểễ]/g,'e')

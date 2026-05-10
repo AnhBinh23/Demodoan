@@ -1,5 +1,3 @@
-const db = require('../config/db');
-
 // Lấy tất cả ca (work slots)
 const getSlots = async (req, res) => {
     try {

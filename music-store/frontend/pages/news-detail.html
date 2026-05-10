@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tin tức — Ascent-Music</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <style>
+    .article-wrap {
+      max-width: 780px; margin: 0 auto;
+    }
+    .article-header { margin-bottom: 2rem; }
+    .article-tag {
+      display: inline-block; background: rgba(201,168,76,.12);
+      color: var(--gold); font-size: .75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .06em;
+      padding: .25rem .8rem; border-radius: 999px; margin-bottom: 1rem;
+    }
+    .article-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      line-height: 1.3; color: var(--cream); margin-bottom: 1rem;
+    }
+    .article-meta {
+      display: flex; align-items: center; gap: 1.2rem;
+      font-size: .82rem; color: var(--muted); flex-wrap: wrap;
+      padding-bottom: 1.2rem; border-bottom: 1px solid var(--border);
+    }
+    .article-meta span { display: flex; align-items: center; gap: .3rem; }
+    .article-thumb {
+      width: 100%; aspect-ratio: 16/9; object-fit: cover;
+      border-radius: var(--radius-lg); margin-bottom: 2rem;
+    }
+    .article-excerpt {
+      font-size: 1.05rem; color: var(--muted); line-height: 1.8;
+      font-style: italic; padding: 1rem 1.5rem;
+      border-left: 3px solid var(--gold);
+      background: rgba(201,168,76,.05);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin-bottom: 2rem;
+    }
+
+    /* Nội dung bài viết */
+    .article-content { line-height: 1.85; font-size: .97rem; color: var(--cream); }
+    .article-content h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem; color: var(--cream);
+      margin: 2rem 0 .8rem; padding-bottom: .4rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .article-content h3 {
+      font-size: 1.1rem; color: var(--gold-light);
+      margin: 1.5rem 0 .5rem;
+    }
+    .article-content p { margin: .8rem 0; color: var(--muted); }
+    .article-content ul, .article-content ol {
+      padding-left: 1.5rem; margin: .8rem 0; color: var(--muted);
+    }
+    .article-content li { margin: .4rem 0; line-height: 1.7; }
+    .article-content img {
+      max-width: 100%; border-radius: var(--radius-lg);
+      margin: 1rem 0; display: block;
+    }
+    .article-content a { color: var(--gold); text-decoration: underline; }
+    .article-content blockquote {
+      border-left: 3px solid var(--gold); padding: .8rem 1.2rem;
+      background: rgba(201,168,76,.05); margin: 1rem 0;
+      border-radius: 0 var(--radius) var(--radius) 0; color: var(--muted);
+      font-style: italic;
+    }
+    .article-content strong { color: var(--cream); }
+
+    /* Bài liên quan */
+    .related-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; }
+    @media(max-width:640px) { .related-grid { grid-template-columns: 1fr; } }
+    .related-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden; transition: .2s;
+      text-decoration: none; display: block;
+    }
+    .related-card:hover { border-color: rgba(201,168,76,.4); transform: translateY(-3px); }
+    .related-card-img {
+      aspect-ratio: 16/9; background: var(--bg3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; overflow: hidden;
+    }
+    .related-card-img img { width:100%; height:100%; object-fit:cover; }
+    .related-card-body { padding: .8rem; }
+    .related-card-title {
+      font-size: .85rem; font-weight: 600; color: var(--cream); line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .related-card:hover .related-card-title { color: var(--gold); }
+    .related-card-date { font-size: .72rem; color: var(--muted); margin-top: .4rem; }
+
+    /* Share */
+    .share-bar {
+      display: flex; align-items: center; gap: .8rem; flex-wrap: wrap;
+      padding: 1.2rem 0; border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border); margin: 2rem 0;
+    }
+    .share-btn {
+      padding: .4rem 1rem; border-radius: 999px; font-size: .82rem;
+      border: 1px solid var(--border); background: none; color: var(--cream);
+      cursor: pointer; transition: .15s; text-decoration: none;
+    }
+    .share-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* Breadcrumb */
+    .breadcrumb {
+      display: flex; align-items: center; gap: .4rem;
+      font-size: .82rem; color: var(--muted); margin-bottom: 1.5rem;
+    }
+    .breadcrumb a { color: var(--muted); text-decoration: none; }
+    .breadcrumb a:hover { color: var(--gold); }
+    .breadcrumb span { color: var(--border); }
+  </style>
+</head>
+<body>
+<div id="header-placeholder"></div>
+
+<div class="section" style="padding-top:2rem" id="mainContent">
+  <div class="loading"><div class="spinner"></div></div>
+</div>
+
+<div id="footer-placeholder"></div>
+<div id="toast-container"></div>
+<script src="../js/api.js"></script>
+<script src="../js/main.js"></script>
+<script>
+  renderHeader('news');
+  renderFooter();
+
+  const slug = new URLSearchParams(location.search).get('slug');
+  if (!slug) window.location.href = 'news.html';
+
+  const TAG_EMOJIS = {
+    Piano:'🎹', Guitar:'🎸', Violin:'🎻', 'Thanh nhạc':'🎤',
+    'Kiến thức':'📚', 'Sự kiện':'🎉', 'Khuyến mãi':'🏷️'
+  };
+
+  async function loadPost() {
+    const content = document.getElementById('mainContent');
+    try {
+      const post = await api.get('/news/slug/' + slug);
+      document.title = post.title + ' — Ascent-Music';
+
+      // Cập nhật meta OG nếu có
+      document.querySelector('meta[property="og:title"]')?.setAttribute('content', post.title);
+
+      const dateStr = new Date(post.published_at).toLocaleDateString('vi-VN', {
+        day:'2-digit', month:'long', year:'numeric'
+      });
+      const emoji = TAG_EMOJIS[post.tag] || '📰';
+
+      content.innerHTML = `
+      <div class="article-wrap">
+
+        <!-- BREADCRUMB -->
+        <div class="breadcrumb">
+          <a href="../../index.html">🏠 Trang chủ</a>
+          <span>›</span>
+          <a href="news.html">Tin tức</a>
+          <span>›</span>
+          <span style="color:var(--cream)">${post.tag||'Bài viết'}</span>
+        </div>
+
+        <!-- HEADER -->
+        <div class="article-header">
+          ${post.tag ? `<span class="article-tag">${emoji} ${post.tag}</span>` : ''}
+          <h1 class="article-title">${post.title}</h1>
+          <div class="article-meta">
+            <span>📅 ${dateStr}</span>
+            <span>✍️ ${post.author_name || 'Ascent-Music'}</span>
+            <span>👁 ${(post.views||0).toLocaleString()} lượt xem</span>
+          </div>
+        </div>
+
+        <!-- ẢNH BÌA -->
+        ${post.thumbnail
+          ? `<img src="${post.thumbnail}" alt="${post.title}" class="article-thumb"
+                  onerror="this.style.display='none'"/>`
+          : `<div style="width:100%;aspect-ratio:16/9;background:var(--bg2);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;font-size:6rem;margin-bottom:2rem;border:1px solid var(--border)">${emoji}</div>`}
+
+        <!-- TÓM TẮT -->
+        ${post.excerpt ? `<div class="article-excerpt">${post.excerpt}</div>` : ''}
+
+        <!-- NỘI DUNG -->
+        <div class="article-content" id="articleBody">${post.content}</div>
+
+        <!-- SHARE -->
+        <div class="share-bar">
+          <span style="font-size:.85rem;color:var(--muted)">Chia sẻ:</span>
+          <button class="share-btn" onclick="copyLink()">🔗 Sao chép link</button>
+          <a class="share-btn"
+             href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(location.href)}"
+             target="_blank">📘 Facebook</a>
+          <a class="share-btn"
+             href="https://zalo.me/share/url?url=${encodeURIComponent(location.href)}"
+             target="_blank">💬 Zalo</a>
+        </div>
+
+        <!-- BÀI LIÊN QUAN -->
+        ${post.related?.length ? `
+          <div style="margin-top:2.5rem">
+            <h3 style="font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:1.2rem">
+              📚 Bài viết liên quan
+            </h3>
+            <div class="related-grid">
+              ${post.related.map(r => `
+                <a href="news-detail.html?slug=${r.slug}" class="related-card">
+                  <div class="related-card-img">
+                    ${r.thumbnail
+                      ? `<img src="${r.thumbnail}" alt="${r.title}" loading="lazy"/>`
+                      : (TAG_EMOJIS[r.tag]||'📰')}
+                  </div>
+                  <div class="related-card-body">
+                    ${r.tag ? `<div style="font-size:.7rem;color:var(--gold);font-weight:600;margin-bottom:.3rem">${TAG_EMOJIS[r.tag]||''} ${r.tag}</div>` : ''}
+                    <div class="related-card-title">${r.title}</div>
+                    <div class="related-card-date">📅 ${new Date(r.published_at).toLocaleDateString('vi-VN')}</div>
+                  </div>
+                </a>`).join('')}
+            </div>
+          </div>` : ''}
+
+        <!-- BACK -->
+        <div style="margin-top:2.5rem;text-align:center">
+          <a href="news.html" class="btn btn-outline">← Quay lại danh sách tin tức</a>
+        </div>
+
+      </div>`;
+
+    } catch(e) {
+      content.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">😕</div>
+          <h3>Không tìm thấy bài viết</h3>
+          <p>Bài viết có thể đã bị xóa hoặc chưa được đăng.</p>
+          <a href="news.html" class="btn btn-outline" style="margin-top:1rem">← Quay lại tin tức</a>
+        </div>`;
+    }
+  }
+
+  function copyLink() {
+    navigator.clipboard.writeText(location.href)
+      .then(() => showToast('Đã sao chép link! 🔗', 'success'))
+      .catch(() => showToast('Không thể sao chép!', 'error'));
+  }
+
+  loadPost();
+</script>
+</body>
+</html>

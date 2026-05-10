@@ -1,8 +1,3 @@
-const db = require('../config/db');
-
-// =============================================
-// INSTRUMENTS & COURSE TYPES
-// =============================================
 const getInstruments = async (req, res) => {
     try {
         const [rows] = await db.query('SELECT * FROM instruments WHERE is_active=1 ORDER BY instrument_id');
