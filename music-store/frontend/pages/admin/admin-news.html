@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quản lý Tin tức — Admin</title>
+  <link rel="stylesheet" href="admin.css"/>
+  <style>
+    .news-thumb {
+      width:60px; height:45px; border-radius:var(--radius);
+      object-fit:cover; background:var(--bg3);
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.4rem; overflow:hidden; flex-shrink:0;
+    }
+    .news-thumb img { width:100%; height:100%; object-fit:cover; }
+
+    /* Editor */
+    .editor-wrap {
+      border:1px solid var(--border); border-radius:var(--radius);
+      overflow:hidden; background:var(--bg3);
+    }
+    .editor-toolbar {
+      display:flex; gap:.2rem; flex-wrap:wrap; padding:.5rem;
+      background:var(--bg2); border-bottom:1px solid var(--border);
+    }
+    .ed-btn {
+      padding:.25rem .55rem; border:1px solid var(--border);
+      background:var(--bg3); color:var(--cream); border-radius:4px;
+      cursor:pointer; font-size:.8rem; transition:.15s;
+    }
+    .ed-btn:hover { border-color:var(--gold); color:var(--gold); }
+    #editorArea {
+      min-height:280px; padding:1rem; outline:none;
+      color:var(--cream); font-size:.9rem; line-height:1.7;
+    }
+    #editorArea h2 { font-size:1.2rem; margin:1rem 0 .5rem; color:var(--cream); }
+    #editorArea h3 { font-size:1rem; margin:.8rem 0 .4rem; color:var(--gold-light); }
+    #editorArea p  { margin:.5rem 0; color:var(--muted); }
+    #editorArea ul,#editorArea ol { padding-left:1.5rem; color:var(--muted); }
+    #editorArea img { max-width:100%; border-radius:var(--radius); }
+
+    .tag-badge {
+      display:inline-block; padding:.2rem .65rem;
+      border-radius:999px; font-size:.72rem; font-weight:600;
+      background:rgba(201,168,76,.12); color:var(--gold);
+    }
+    .preview-card {
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:var(--radius-lg); overflow:hidden; max-width:340px;
+    }
+    .preview-card img { width:100%; aspect-ratio:16/9; object-fit:cover; }
+    .preview-card-body { padding:1rem; }
+  </style>
+</head>
+<body>
+<div id="sidebar-placeholder"></div>
+
+<main class="admin-main">
+  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
+    <div><h1>📰 Tin tức</h1><p>Quản lý bài viết và tin tức</p></div>
+    <button class="btn btn-primary" onclick="openModal()">+ Viết bài mới</button>
+  </div>
+
+  <!-- STATS -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem">
+    <div class="stat-card"><div class="stat-icon" style="background:rgba(201,168,76,.1)">📰</div><div class="stat-info"><div class="value" id="stTotal">—</div><div class="label">Tổng bài viết</div></div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:rgba(76,175,128,.1)">✅</div><div class="stat-info"><div class="value" id="stPublished">—</div><div class="label">Đã đăng</div></div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:rgba(150,150,150,.1)">📝</div><div class="stat-info"><div class="value" id="stDraft">—</div><div class="label">Bản nháp</div></div></div>
+    <div class="stat-card"><div class="stat-icon" style="background:rgba(100,149,237,.1)">👁️</div><div class="stat-info"><div class="value" id="stViews">—</div><div class="label">Lượt xem</div></div></div>
+  </div>
+
+  <div class="admin-table-wrap">
+    <div class="table-toolbar">
+      <div class="search-input">
+        <span>🔍</span>
+        <input type="text" placeholder="Tìm bài viết..." id="searchInput" oninput="filterNews()"/>
+      </div>
+      <select class="form-select" style="width:auto" id="tagFilter" onchange="filterNews()">
+        <option value="">Tất cả chủ đề</option>
+        <option>Piano</option><option>Guitar</option><option>Violin</option>
+        <option>Thanh nhạc</option><option>Kiến thức</option><option>Sự kiện</option><option>Khuyến mãi</option>
+      </select>
+      <select class="form-select" style="width:auto" id="statusFilter" onchange="filterNews()">
+        <option value="">Tất cả trạng thái</option>
+        <option value="1">Đã đăng</option>
+        <option value="0">Bản nháp</option>
+      </select>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Bài viết</th><th>Chủ đề</th><th>Lượt xem</th><th>Ngày đăng</th><th>Trạng thái</th><th>Thao tác</th></tr>
+      </thead>
+      <tbody id="newsBody">
+        <tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr>
+      </tbody>
+    </table>
+    <div id="pagination" style="display:flex;gap:.4rem;padding:1rem;justify-content:center"></div>
+  </div>
+</main>
+
+<!-- MODAL SOẠN BÀI -->
+<div class="modal-overlay" id="newsModal" style="display:none">
+  <div class="modal" style="max-width:860px;width:95vw;max-height:92vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3 id="modalTitle">✍️ Viết bài mới</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <input type="hidden" id="editId"/>
+
+    <div style="display:grid;grid-template-columns:1fr 280px;gap:1.2rem">
+      <!-- TRÁI: Soạn thảo -->
+      <div>
+        <div class="form-group">
+          <label class="form-label">Tiêu đề bài viết *</label>
+          <input type="text" class="form-input" id="fTitle"
+                 placeholder="Nhập tiêu đề hấp dẫn..."
+                 oninput="autoSlug(this.value)" style="font-size:1rem;font-weight:600"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Slug (URL)</label>
+          <input type="text" class="form-input" id="fSlug"
+                 placeholder="tu-dong-tao-tu-tieu-de"
+                 style="font-size:.82rem;color:var(--muted)"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tóm tắt <span style="color:var(--muted);font-weight:400">(hiện ở trang danh sách)</span></label>
+          <textarea class="form-textarea" id="fExcerpt" style="min-height:70px"
+                    placeholder="Viết 1-2 câu mô tả ngắn về bài viết..."></textarea>
+        </div>
+
+        <!-- EDITOR -->
+        <div class="form-group">
+          <label class="form-label">Nội dung bài viết *</label>
+          <div class="editor-wrap">
+            <div class="editor-toolbar">
+              <button class="ed-btn" onclick="edCmd('bold')" title="In đậm"><b>B</b></button>
+              <button class="ed-btn" onclick="edCmd('italic')" title="In nghiêng"><i>I</i></button>
+              <button class="ed-btn" onclick="edCmd('underline')" title="Gạch chân"><u>U</u></button>
+              <button class="ed-btn" onclick="edH('h2')" title="Tiêu đề lớn">H2</button>
+              <button class="ed-btn" onclick="edH('h3')" title="Tiêu đề nhỏ">H3</button>
+              <button class="ed-btn" onclick="edCmd('insertUnorderedList')" title="Danh sách">• List</button>
+              <button class="ed-btn" onclick="edCmd('insertOrderedList')" title="Danh sách số">1. List</button>
+              <button class="ed-btn" onclick="edLink()" title="Chèn link">🔗</button>
+              <button class="ed-btn" onclick="edImg()" title="Chèn ảnh">🖼️</button>
+              <button class="ed-btn" onclick="edCmd('removeFormat')" title="Xóa định dạng">✕ Format</button>
+            </div>
+            <div id="editorArea" contenteditable="true"
+                 onpaste="handlePaste(event)"
+                 placeholder="Bắt đầu viết nội dung bài viết..."></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PHẢI: Cài đặt -->
+      <div style="display:flex;flex-direction:column;gap:1rem">
+        <!-- Xuất bản -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem">
+          <p style="font-size:.85rem;font-weight:600;margin-bottom:.8rem;color:var(--cream)">⚙️ Xuất bản</p>
+          <div class="form-group" style="margin-bottom:.6rem">
+            <label class="form-label" style="font-size:.8rem">Trạng thái</label>
+            <select class="form-select" id="fPublished">
+              <option value="1">✅ Công khai</option>
+              <option value="0">📝 Bản nháp</option>
+            </select>
+          </div>
+          <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.85rem">
+            <input type="checkbox" id="fFeatured" style="width:16px;height:16px;accent-color:var(--gold)"/>
+            ⭐ Đặt làm bài nổi bật
+          </label>
+        </div>
+
+        <!-- Chủ đề -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem">
+          <p style="font-size:.85rem;font-weight:600;margin-bottom:.8rem;color:var(--cream)">🏷️ Chủ đề</p>
+          <select class="form-select" id="fTag">
+            <option value="">-- Chọn chủ đề --</option>
+            <option>Piano</option><option>Guitar</option><option>Violin</option>
+            <option>Thanh nhạc</option><option>Kiến thức</option>
+            <option>Sự kiện</option><option>Khuyến mãi</option>
+          </select>
+        </div>
+
+        <!-- Ảnh bìa -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem">
+          <p style="font-size:.85rem;font-weight:600;margin-bottom:.8rem;color:var(--cream)">🖼️ Ảnh bìa</p>
+          <input type="text" class="form-input" id="fThumbnail"
+                 placeholder="https://... hoặc /images/..."
+                 style="font-size:.8rem;margin-bottom:.6rem"
+                 oninput="previewThumb(this.value)"/>
+          <div id="thumbPreview" style="display:none">
+            <img id="thumbImg" style="width:100%;border-radius:var(--radius);aspect-ratio:16/9;object-fit:cover" alt=""/>
+          </div>
+          <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem">Nhập URL ảnh (Cloudinary, Imgur...)</p>
+        </div>
+
+        <!-- Preview nhanh -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem">
+          <p style="font-size:.85rem;font-weight:600;margin-bottom:.8rem;color:var(--cream)">👁️ Xem trước thẻ</p>
+          <div class="preview-card">
+            <div style="aspect-ratio:16/9;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:2rem" id="prevImgWrap">
+              <img id="prevImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover"/>
+              <span id="prevEmoji">📰</span>
+            </div>
+            <div class="preview-card-body">
+              <div class="tag-badge" id="prevTag">Chủ đề</div>
+              <div style="font-size:.88rem;font-weight:600;margin:.4rem 0;line-height:1.4;color:var(--cream)" id="prevTitle">Tiêu đề bài viết</div>
+              <div style="font-size:.78rem;color:var(--muted);line-height:1.5" id="prevExcerpt">Tóm tắt ngắn...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Hủy</button>
+      <button class="btn btn-outline" onclick="saveDraft()">💾 Lưu nháp</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="savePost()">🚀 Đăng bài</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="../../js/api.js"></script>
+<script src="sidebar.js"></script>
+<script>
+  renderSidebar('news');
+  let allPosts = [], currentPage = 1;
+
+  // ====== LOAD ======
+  async function loadNews(page=1) {
+    currentPage = page;
+    const search = document.getElementById('searchInput').value;
+    try {
+      const data = await api.get(`/news/admin/all?page=${page}&limit=15&search=${encodeURIComponent(search)}`);
+      allPosts = data.posts;
+      renderStats(data);
+      renderTable(data.posts);
+      renderPagination(data.total_pages, page);
+    } catch(e) { showToast(e.message,'error'); }
+  }
+
+  function renderStats(data) {
+    const published = data.posts.filter(p=>p.is_published).length;
+    document.getElementById('stTotal').textContent     = data.total;
+    document.getElementById('stPublished').textContent = published;
+    document.getElementById('stDraft').textContent     = data.total - published;
+    document.getElementById('stViews').textContent     = data.posts.reduce((s,p)=>s+(p.views||0),0).toLocaleString();
+  }
+
+  function renderTable(posts) {
+    const tbody = document.getElementById('newsBody');
+    const tag   = document.getElementById('tagFilter').value;
+    const sta   = document.getElementById('statusFilter').value;
+    const filtered = posts.filter(p =>
+      (!tag || p.tag===tag) &&
+      (sta==='' || String(p.is_published)===sta)
+    );
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">📰</div><p>Không có bài viết</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = filtered.map(p => `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:.8rem">
+            <div class="news-thumb">
+              ${p.thumbnail
+                ? `<img src="${p.thumbnail}" alt="" onerror="this.parentElement.innerHTML='📰'"/>`
+                : '📰'}
+            </div>
+            <div>
+              <div style="font-weight:600;font-size:.88rem;max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.title}</div>
+              <div style="font-size:.72rem;color:var(--muted)">${p.is_featured?'⭐ Nổi bật · ':''}${p.author_name||'Admin'}</div>
+            </div>
+          </div>
+        </td>
+        <td>${p.tag ? `<span class="tag-badge">${p.tag}</span>` : '—'}</td>
+        <td style="color:var(--muted)">👁 ${(p.views||0).toLocaleString()}</td>
+        <td style="color:var(--muted);font-size:.82rem">${new Date(p.published_at).toLocaleDateString('vi-VN')}</td>
+        <td>
+          <span class="badge ${p.is_published?'badge-active':'badge-inactive'}">${p.is_published?'Đã đăng':'Bản nháp'}</span>
+        </td>
+        <td style="display:flex;gap:.3rem;flex-wrap:wrap">
+          <a href="../news-detail.html?slug=${p.slug}" target="_blank" class="btn btn-outline btn-sm" title="Xem bài">👁</a>
+          <button class="btn btn-outline btn-sm" onclick="editPost(${p.post_id})">✏️</button>
+          <button class="btn btn-outline btn-sm" onclick="togglePost(${p.post_id})" title="${p.is_published?'Ẩn':'Đăng'}">
+            ${p.is_published?'⬇️':'⬆️'}
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="deletePost(${p.post_id},'${p.title.replace(/'/g,"\\'")}')">🗑</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  function renderPagination(totalPages, current) {
+    const div = document.getElementById('pagination');
+    if (totalPages <= 1) { div.innerHTML=''; return; }
+    div.innerHTML = Array.from({length:totalPages},(_,i)=>i+1)
+      .map(i=>`<button class="btn btn-sm ${i===current?'btn-primary':'btn-outline'}" onclick="loadNews(${i})">${i}</button>`)
+      .join('');
+  }
+
+  function filterNews() { renderTable(allPosts); }
+
+  // ====== EDITOR HELPERS ======
+  const toSlug = s => s.toLowerCase()
+    .replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g,'a').replace(/[èéẹẻẽêềếệểễ]/g,'e')
+    .replace(/[ìíịỉĩ]/g,'i').replace(/[òóọỏõôồốộổỗơờớợởỡ]/g,'o')
+    .replace(/[ùúụủũưừứựửữ]/g,'u').replace(/[ỳýỵỷỹ]/g,'y').replace(/đ/g,'d')
+    .replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-');
+
+  function autoSlug(val) {
+    if (!document.getElementById('editId').value)
+      document.getElementById('fSlug').value = toSlug(val);
+    // Live preview
+    document.getElementById('prevTitle').textContent = val || 'Tiêu đề bài viết';
+  }
+
+  function previewThumb(url) {
+    const img  = document.getElementById('thumbImg');
+    const prev = document.getElementById('prevImg');
+    const emoji= document.getElementById('prevEmoji');
+    if (url) {
+      img.src = url; img.style.display='block';
+      document.getElementById('thumbPreview').style.display='block';
+      prev.src = url; prev.style.display='block';
+      emoji.style.display='none';
+    } else {
+      img.style.display='none';
+      document.getElementById('thumbPreview').style.display='none';
+      prev.style.display='none';
+      emoji.style.display='block';
+    }
+  }
+
+  document.addEventListener('change', e => {
+    if (e.target.id==='fTag')
+      document.getElementById('prevTag').textContent = e.target.value || 'Chủ đề';
+    if (e.target.id==='fExcerpt'||e.target.tagName==='TEXTAREA')
+      document.getElementById('prevExcerpt').textContent = document.getElementById('fExcerpt').value || 'Tóm tắt ngắn...';
+  });
+  document.addEventListener('input', e => {
+    if (e.target.id==='fExcerpt')
+      document.getElementById('prevExcerpt').textContent = e.target.value || 'Tóm tắt ngắn...';
+    if (e.target.id==='fTag')
+      document.getElementById('prevTag').textContent = e.target.value || 'Chủ đề';
+  });
+
+  function edCmd(cmd) { document.getElementById('editorArea').focus(); document.execCommand(cmd,false,null); }
+  function edH(tag) {
+    document.getElementById('editorArea').focus();
+    document.execCommand('formatBlock',false,tag);
+  }
+  function edLink() {
+    const url = prompt('Nhập URL:');
+    if (url) { document.getElementById('editorArea').focus(); document.execCommand('createLink',false,url); }
+  }
+  function edImg() {
+    const url = prompt('Nhập URL ảnh:');
+    if (url) { document.getElementById('editorArea').focus(); document.execCommand('insertImage',false,url); }
+  }
+  function handlePaste(e) {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, text);
+  }
+
+  // ====== MODAL ======
+  function openModal(post=null) {
+    document.getElementById('modalTitle').textContent = post ? '✏️ Sửa bài viết' : '✍️ Viết bài mới';
+    document.getElementById('editId').value       = post?.post_id || '';
+    document.getElementById('fTitle').value       = post?.title || '';
+    document.getElementById('fSlug').value        = post?.slug || '';
+    document.getElementById('fExcerpt').value     = post?.excerpt || '';
+    document.getElementById('fTag').value         = post?.tag || '';
+    document.getElementById('fPublished').value   = post?.is_published ?? 1;
+    document.getElementById('fFeatured').checked  = !!post?.is_featured;
+    document.getElementById('fThumbnail').value   = post?.thumbnail || '';
+    document.getElementById('editorArea').innerHTML = post?.content || '';
+    previewThumb(post?.thumbnail||'');
+    document.getElementById('prevTitle').textContent   = post?.title   || 'Tiêu đề bài viết';
+    document.getElementById('prevExcerpt').textContent = post?.excerpt || 'Tóm tắt ngắn...';
+    document.getElementById('prevTag').textContent     = post?.tag     || 'Chủ đề';
+    document.getElementById('newsModal').style.display = 'flex';
+  }
+
+  function closeModal() { document.getElementById('newsModal').style.display='none'; }
+
+  async function editPost(id) {
+    try {
+      const post = await api.get('/news/admin/'+id);
+      openModal(post);
+    } catch(e) { showToast(e.message,'error'); }
+  }
+
+  async function savePost(isDraft=false) {
+    const id      = document.getElementById('editId').value;
+    const title   = document.getElementById('fTitle').value.trim();
+    const content = document.getElementById('editorArea').innerHTML.trim();
+    if (!title)   { showToast('Nhập tiêu đề!','error'); return; }
+    if (!content || content==='<br>') { showToast('Nhập nội dung!','error'); return; }
+
+    const body = {
+      title,
+      slug:        document.getElementById('fSlug').value.trim(),
+      excerpt:     document.getElementById('fExcerpt').value.trim(),
+      content,
+      thumbnail:   document.getElementById('fThumbnail').value.trim(),
+      tag:         document.getElementById('fTag').value,
+      is_featured: document.getElementById('fFeatured').checked,
+      is_published: isDraft ? 0 : parseInt(document.getElementById('fPublished').value),
+    };
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled=true; btn.textContent='Đang lưu...';
+    try {
+      if (id) await api.put('/news/'+id, body);
+      else     await api.post('/news', body);
+      showToast(isDraft?'Đã lưu nháp!':'Đăng bài thành công! 🎉','success');
+      closeModal(); await loadNews(currentPage);
+    } catch(e) { showToast(e.message,'error'); }
+    finally { btn.disabled=false; btn.textContent='🚀 Đăng bài'; }
+  }
+
+  function saveDraft() { savePost(true); }
+
+  async function togglePost(id) {
+    try {
+      await api.patch ? api.patch('/news/'+id+'/toggle') : fetch(`http://localhost:5000/api/news/${id}/toggle`,{method:'PATCH',headers:{Authorization:'Bearer '+localStorage.getItem('token')}});
+      await loadNews(currentPage);
+    } catch(e) { showToast(e.message,'error'); }
+  }
+
+  async function deletePost(id, title) {
+    if (!confirm(`Xóa bài "${title}"?`)) return;
+    try {
+      await api.delete('/news/'+id);
+      showToast('Đã xóa!','success'); await loadNews(currentPage);
+    } catch(e) { showToast(e.message,'error'); }
+  }
+
+  loadNews();
+</script>
+</body>
+</html>

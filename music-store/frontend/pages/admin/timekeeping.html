@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chấm công Giáo viên — Admin</title>
+  <link rel="stylesheet" href="admin.css"/>
+  <style>
+    /* ===== LƯỚI CHẤM CÔNG ===== */
+    .tk-wrap { overflow-x: auto; }
+    .tk-table {
+      width: 100%; border-collapse: collapse;
+      font-size: .8rem; min-width: 900px;
+    }
+    .tk-table th {
+      background: var(--bg3); color: var(--muted);
+      padding: .5rem .4rem; text-align: center;
+      border: 1px solid var(--border); white-space: nowrap;
+      font-weight: 600; position: sticky; top: 0; z-index: 2;
+    }
+    .tk-table th.teacher-col {
+      text-align: left; padding-left: .8rem;
+      min-width: 160px; position: sticky; left: 0; z-index: 3;
+      background: var(--bg3);
+    }
+    .tk-table td {
+      border: 1px solid var(--border);
+      padding: .25rem; text-align: center; vertical-align: middle;
+    }
+    .tk-table td.teacher-cell {
+      text-align: left; padding: .4rem .8rem;
+      position: sticky; left: 0; background: var(--bg2); z-index: 1;
+      min-width: 160px;
+    }
+    .tk-table tr:hover td { background: rgba(201,168,76,.04); }
+    .tk-table tr:hover td.teacher-cell { background: var(--bg2); }
+
+    /* Ô chấm công */
+    .slot-cell {
+      width: 54px; cursor: pointer;
+      border-radius: 4px; padding: .2rem;
+      transition: .15s; user-select: none;
+    }
+    .slot-cell:hover { opacity: .85; transform: scale(1.05); }
+    .slot-present  { background: rgba(76,175,128,.25); color: var(--green); }
+    .slot-absent   { background: rgba(224,85,85,.2);   color: var(--red); }
+    .slot-late     { background: rgba(255,165,0,.2);   color: orange; }
+    .slot-leave    { background: rgba(100,149,237,.2); color: #6495ed; }
+    .slot-empty    { background: var(--bg3); color: var(--muted); }
+
+    .slot-icon { font-size: .9rem; display: block; }
+    .slot-text { font-size: .62rem; display: block; line-height: 1.1; }
+
+    /* Chú thích */
+    .legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .legend-item {
+      display: flex; align-items: center; gap: .4rem;
+      font-size: .82rem; cursor: pointer; padding: .3rem .6rem;
+      border-radius: var(--radius); border: 1px solid var(--border);
+      transition: .15s;
+    }
+    .legend-item:hover { border-color: var(--gold); }
+    .legend-item.active-legend { border-color: var(--gold); background: rgba(201,168,76,.1); }
+    .legend-dot {
+      width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0;
+    }
+
+    /* Teacher info */
+    .t-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--gold-dim); display: inline-flex;
+      align-items: center; justify-content: center;
+      font-size: .75rem; font-weight: 700; color: var(--gold-light);
+      flex-shrink: 0; vertical-align: middle; margin-right: .5rem;
+    }
+
+    /* Tổng kết */
+    .summary-bar {
+      display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .3rem;
+    }
+    .sum-badge {
+      font-size: .65rem; padding: .1rem .35rem;
+      border-radius: 99px; font-weight: 600;
+    }
+
+    /* Toolbar */
+    .tk-toolbar {
+      display: flex; align-items: center; gap: .8rem;
+      flex-wrap: wrap; margin-bottom: 1rem;
+    }
+    .date-nav {
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .date-nav button {
+      width: 32px; height: 32px; border: 1px solid var(--border);
+      background: var(--bg2); color: var(--cream); border-radius: var(--radius);
+      cursor: pointer; font-size: 1rem; transition: .15s;
+    }
+    .date-nav button:hover { border-color: var(--gold); color: var(--gold); }
+    .date-display {
+      font-weight: 600; font-size: .95rem; min-width: 130px; text-align: center;
+    }
+    .view-tabs { display: flex; gap: .3rem; }
+    .view-tab {
+      padding: .3rem .8rem; border-radius: var(--radius);
+      border: 1px solid var(--border); background: none;
+      color: var(--muted); cursor: pointer; font-size: .82rem; transition: .15s;
+    }
+    .view-tab.active { background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600; }
+
+    /* Trang thống kê tháng */
+    .monthly-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 1rem; }
+    .monthly-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1rem;
+    }
+    .progress-ring { position: relative; display: inline-block; margin-right: .8rem; }
+    .progress-ring svg { transform: rotate(-90deg); }
+    .ring-text {
+      position: absolute; inset: 0; display: flex;
+      align-items: center; justify-content: center;
+      font-size: .75rem; font-weight: 700; color: var(--gold);
+    }
+  </style>
+</head>
+<body>
+<div id="sidebar-placeholder"></div>
+
+<main class="admin-main">
+  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem">
+    <div>
+      <h1>⏰ Chấm công Giáo viên</h1>
+      <p>Theo dõi giờ làm việc theo từng ca trong ngày</p>
+    </div>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn btn-outline btn-sm" onclick="exportData()">📥 Xuất Excel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveAll()">💾 Lưu tất cả</button>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="tk-toolbar">
+    <!-- Điều hướng ngày -->
+    <div class="date-nav">
+      <button onclick="prevDay()">‹</button>
+      <input type="date" id="dateInput" class="form-input"
+             style="width:150px;padding:.35rem .6rem;font-size:.88rem"
+             onchange="loadDate(this.value)"/>
+      <button onclick="nextDay()">›</button>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="goToday()">Hôm nay</button>
+
+    <!-- Chế độ xem -->
+    <div class="view-tabs" style="margin-left:auto">
+      <button class="view-tab active" id="tabDay"     onclick="setView('day')">📅 Theo ngày</button>
+      <button class="view-tab"        id="tabMonthly" onclick="setView('monthly')">📊 Thống kê tháng</button>
+    </div>
+  </div>
+
+  <!-- CHÍNH SÁCH TRẠNG THÁI -->
+  <div class="legend" id="legendBar">
+    <span style="font-size:.82rem;color:var(--muted);align-self:center">Click ô để đổi trạng thái:</span>
+    <div class="legend-item active-legend" onclick="setFillStatus('present')">
+      <div class="legend-dot" style="background:rgba(76,175,128,.5)"></div>✅ Có mặt
+    </div>
+    <div class="legend-item" onclick="setFillStatus('absent')">
+      <div class="legend-dot" style="background:rgba(224,85,85,.5)"></div>❌ Vắng
+    </div>
+    <div class="legend-item" onclick="setFillStatus('late')">
+      <div class="legend-dot" style="background:rgba(255,165,0,.5)"></div>⏰ Đi trễ
+    </div>
+    <div class="legend-item" onclick="setFillStatus('leave')">
+      <div class="legend-dot" style="background:rgba(100,149,237,.5)"></div>📝 Nghỉ phép
+    </div>
+    <div class="legend-item" onclick="setFillStatus('')">
+      <div class="legend-dot" style="background:var(--bg3);border:1px solid var(--border)"></div>⬜ Xóa
+    </div>
+  </div>
+
+  <!-- VIEW NGÀY -->
+  <div id="dayView">
+    <div class="admin-table-wrap">
+      <div class="tk-wrap" id="tkWrap">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW THÁNG -->
+  <div id="monthlyView" style="display:none">
+    <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1rem">
+      <input type="month" id="monthInput" class="form-input"
+             style="width:160px;padding:.35rem .6rem;font-size:.88rem"
+             onchange="loadMonthly(this.value)"/>
+      <button class="btn btn-outline btn-sm" onclick="loadMonthly(document.getElementById('monthInput').value)">🔄 Tải lại</button>
+    </div>
+    <div class="monthly-grid" id="monthlyGrid">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+</main>
+
+<div id="toast-container"></div>
+<script src="../../js/api.js"></script>
+<script src="sidebar.js"></script>
+<script>
+  renderSidebar('timekeeping');
+
+  let currentDate   = new Date().toISOString().split('T')[0];
+  let currentView   = 'day';
+  let fillStatus    = 'present'; // trạng thái khi click ô
+  let allSlots      = [];
+  let allTeachers   = [];
+  let pendingChanges = {}; // { "teacherId-slotId": status }
+
+  // Icon + nhãn theo trạng thái
+  const STATUS = {
+    present: { icon: '✅', text: 'Có mặt', cls: 'slot-present' },
+    absent:  { icon: '❌', text: 'Vắng',   cls: 'slot-absent'  },
+    late:    { icon: '⏰', text: 'Trễ',    cls: 'slot-late'    },
+    leave:   { icon: '📝', text: 'Phép',   cls: 'slot-leave'   },
+    '':      { icon: '—',  text: '',        cls: 'slot-empty'   },
+  };
+
+  // ======== KHỞI ĐỘNG ========
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('dateInput').value  = currentDate;
+    const m = currentDate.substring(0, 7);
+    document.getElementById('monthInput').value = m;
+    loadDate(currentDate);
+  });
+
+  // ======== ĐIỀU HƯỚNG NGÀY ========
+  function prevDay() {
+    const d = new Date(currentDate); d.setDate(d.getDate() - 1);
+    currentDate = d.toISOString().split('T')[0];
+    document.getElementById('dateInput').value = currentDate;
+    loadDate(currentDate);
+  }
+  function nextDay() {
+    const d = new Date(currentDate); d.setDate(d.getDate() + 1);
+    currentDate = d.toISOString().split('T')[0];
+    document.getElementById('dateInput').value = currentDate;
+    loadDate(currentDate);
+  }
+  function goToday() {
+    currentDate = new Date().toISOString().split('T')[0];
+    document.getElementById('dateInput').value = currentDate;
+    loadDate(currentDate);
+  }
+
+  function setView(v) {
+    currentView = v;
+    document.getElementById('dayView').style.display     = v === 'day'     ? 'block' : 'none';
+    document.getElementById('monthlyView').style.display = v === 'monthly' ? 'block' : 'none';
+    document.getElementById('legendBar').style.display   = v === 'day'     ? 'flex'  : 'none';
+    document.getElementById('tabDay').classList.toggle('active',     v === 'day');
+    document.getElementById('tabMonthly').classList.toggle('active', v === 'monthly');
+    if (v === 'monthly') loadMonthly(document.getElementById('monthInput').value);
+  }
+
+  function setFillStatus(s) {
+    fillStatus = s;
+    document.querySelectorAll('.legend-item').forEach((el, i) => {
+      const vals = ['present','absent','late','leave',''];
+      el.classList.toggle('active-legend', vals[i] === s);
+    });
+  }
+
+  // ======== LOAD BẢNG CHẤM CÔNG NGÀY ========
+  async function loadDate(date) {
+    currentDate = date;
+    pendingChanges = {};
+    document.getElementById('tkWrap').innerHTML =
+      '<div class="loading"><div class="spinner"></div></div>';
+    try {
+      const data = await api.get('/timekeeping/date/' + date);
+      allSlots    = data.slots;
+      allTeachers = data.teachers;
+      renderGrid(data);
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  // ======== RENDER LƯỚI ========
+  function renderGrid(data) {
+    const { teachers, slots, map } = data;
+
+    if (!teachers.length) {
+      document.getElementById('tkWrap').innerHTML =
+        '<div class="empty-state"><div class="icon">👨‍🏫</div><p>Chưa có giáo viên nào</p></div>';
+      return;
+    }
+
+    // Header hàng slot
+    const headerCols = slots.map(s => `
+      <th style="font-size:.72rem;min-width:58px">
+        ${s.slot_label.replace(' - ','<br/>')}
+      </th>`).join('');
+
+    // Hàng giáo viên
+    const rows = teachers.map(t => {
+      const cells = slots.map(s => {
+        const key = `${t.teacher_id}-${s.slot_id}`;
+        const rec = pendingChanges[key] !== undefined
+          ? { status: pendingChanges[key] }
+          : (map[key] || null);
+        const st  = rec?.status || '';
+        const info = STATUS[st] || STATUS[''];
+        return `
+          <td>
+            <div class="slot-cell ${info.cls}"
+                 data-tid="${t.teacher_id}" data-sid="${s.slot_id}"
+                 onclick="toggleCell(this)"
+                 title="${info.text}">
+              <span class="slot-icon">${info.icon}</span>
+              <span class="slot-text">${info.text}</span>
+            </div>
+          </td>`;
+      }).join('');
+
+      // Tóm tắt nhanh của giáo viên trong ngày
+      const allKeys = slots.map(s => `${t.teacher_id}-${s.slot_id}`);
+      const counts  = { present:0, absent:0, late:0, leave:0 };
+      allKeys.forEach(k => {
+        const rec = map[k];
+        if (rec && counts[rec.status] !== undefined) counts[rec.status]++;
+      });
+      const summaryHTML = Object.entries(counts).filter(([,v])=>v>0)
+        .map(([k,v]) => {
+          const colors = {present:'var(--green)',absent:'var(--red)',late:'orange',leave:'#6495ed'};
+          const labels = {present:'Có mặt',absent:'Vắng',late:'Trễ',leave:'Phép'};
+          return `<span class="sum-badge" style="background:${colors[k]}22;color:${colors[k]}">${labels[k]}: ${v}</span>`;
+        }).join('');
+
+      const avatar = t.avatar
+        ? `<img src="${t.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;margin-right:.5rem;vertical-align:middle" onerror="this.outerHTML='<span class=t-avatar>${(t.full_name[0]||'?').toUpperCase()}</span>'">`
+        : `<span class="t-avatar">${(t.full_name[0]||'?').toUpperCase()}</span>`;
+
+      return `
+        <tr>
+          <td class="teacher-cell">
+            <div style="display:flex;align-items:center">
+              ${avatar}
+              <div>
+                <div style="font-weight:600;font-size:.85rem">${t.full_name}</div>
+                <div style="font-size:.72rem;color:var(--muted)">${t.icon||''} ${t.instrument||''}</div>
+              </div>
+            </div>
+            <div class="summary-bar">${summaryHTML}</div>
+          </td>
+          ${cells}
+        </tr>`;
+    }).join('');
+
+    const dateFormatted = new Date(currentDate + 'T00:00:00')
+      .toLocaleDateString('vi-VN', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
+
+    document.getElementById('tkWrap').innerHTML = `
+      <div style="padding:.8rem 1rem;font-size:.9rem;color:var(--muted);border-bottom:1px solid var(--border)">
+        📅 ${dateFormatted} — ${teachers.length} giáo viên · ${slots.length} ca/ngày
+      </div>
+      <div style="overflow-x:auto;max-height:calc(100vh - 300px);overflow-y:auto">
+        <table class="tk-table">
+          <thead>
+            <tr>
+              <th class="teacher-col">Giáo viên</th>
+              ${headerCols}
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // ======== CLICK Ô CHẤM CÔNG ========
+  function toggleCell(el) {
+    const tid = el.dataset.tid;
+    const sid = el.dataset.sid;
+    const key = `${tid}-${sid}`;
+
+    // Gán trạng thái mới (fillStatus đang chọn)
+    const newStatus = fillStatus;
+    pendingChanges[key] = newStatus;
+
+    // Cập nhật UI ngay
+    const info = STATUS[newStatus] || STATUS[''];
+    el.className = `slot-cell ${info.cls}`;
+    el.querySelector('.slot-icon').textContent = info.icon;
+    el.querySelector('.slot-text').textContent = info.text;
+    el.title = info.text;
+  }
+
+  // ======== LƯU TẤT CẢ ========
+  async function saveAll() {
+    if (!Object.keys(pendingChanges).length) {
+      showToast('Chưa có thay đổi nào!', 'info'); return;
+    }
+    const records = Object.entries(pendingChanges)
+      .map(([key, status]) => {
+        const [teacher_id, slot_id] = key.split('-');
+        return { teacher_id: parseInt(teacher_id), slot_id: parseInt(slot_id), status };
+      })
+      .filter(r => r.status !== ''); // bỏ ô đã xóa (để trống)
+
+    const btn = document.querySelector('button[onclick="saveAll()"]');
+    btn.disabled = true; btn.textContent = 'Đang lưu...';
+    try {
+      await api.post('/timekeeping/day', { work_date: currentDate, records });
+      showToast(`✅ Lưu ${records.length} bản ghi thành công!`, 'success');
+      pendingChanges = {};
+      loadDate(currentDate);
+    } catch(e) { showToast(e.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = '💾 Lưu tất cả'; }
+  }
+
+  // ======== THỐNG KÊ THÁNG ========
+  async function loadMonthly(month) {
+    if (!month) return;
+    document.getElementById('monthlyGrid').innerHTML =
+      '<div class="loading"><div class="spinner"></div></div>';
+    try {
+      const data = await api.get('/timekeeping/monthly/' + month);
+      renderMonthly(data, month);
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  function renderMonthly(data, month) {
+    const grid = document.getElementById('monthlyGrid');
+    if (!data.length) {
+      grid.innerHTML = '<div class="empty-state"><div class="icon">📊</div><p>Không có dữ liệu</p></div>';
+      return;
+    }
+    grid.innerHTML = data.map(t => {
+      const total   = t.total_slots || 0;
+      const present = t.present_slots || 0;
+      const pct     = total ? Math.round(present / total * 100) : 0;
+      const salary  = t.salary_type === 'per_session'
+        ? present * t.salary
+        : t.salary;
+
+      // SVG ring
+      const r = 24, circ = 2 * Math.PI * r;
+      const dash = (pct / 100) * circ;
+      const ring = `
+        <div class="progress-ring">
+          <svg width="60" height="60" viewBox="0 0 60 60">
+            <circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="5"/>
+            <circle cx="30" cy="30" r="${r}" fill="none"
+              stroke="${pct >= 80 ? 'var(--green)' : pct >= 50 ? 'orange' : 'var(--red)'}"
+              stroke-width="5"
+              stroke-dasharray="${dash.toFixed(1)} ${circ.toFixed(1)}"
+              stroke-linecap="round"/>
+          </svg>
+          <div class="ring-text">${pct}%</div>
+        </div>`;
+
+      const avatar = t.avatar
+        ? `<img src="${t.avatar}" style="width:36px;height:36px;border-radius:50%;object-fit:cover" onerror="this.outerHTML='<div style=width:36px;height:36px;border-radius:50%;background:var(--gold-dim);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gold-light)>${(t.full_name[0]||'?').toUpperCase()}</div>'">`
+        : `<div style="width:36px;height:36px;border-radius:50%;background:var(--gold-dim);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gold-light)">${(t.full_name[0]||'?').toUpperCase()}</div>`;
+
+      return `
+        <div class="monthly-card">
+          <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1rem">
+            ${ring}
+            <div>
+              <div style="display:flex;align-items:center;gap:.4rem">${avatar}</div>
+              <div style="font-weight:600;margin-top:.3rem">${t.full_name}</div>
+              <div style="font-size:.78rem;color:var(--muted)">${t.icon||''} ${t.instrument||''}</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;font-size:.82rem;margin-bottom:.8rem">
+            <div style="background:rgba(76,175,128,.1);border-radius:var(--radius);padding:.4rem .6rem">
+              ✅ Có mặt: <strong style="color:var(--green)">${present}</strong>
+            </div>
+            <div style="background:rgba(224,85,85,.1);border-radius:var(--radius);padding:.4rem .6rem">
+              ❌ Vắng: <strong style="color:var(--red)">${t.absent_slots||0}</strong>
+            </div>
+            <div style="background:rgba(255,165,0,.1);border-radius:var(--radius);padding:.4rem .6rem">
+              ⏰ Trễ: <strong style="color:orange">${t.late_slots||0}</strong>
+            </div>
+            <div style="background:rgba(100,149,237,.1);border-radius:var(--radius);padding:.4rem .6rem">
+              📝 Phép: <strong style="color:#6495ed">${t.leave_slots||0}</strong>
+            </div>
+          </div>
+          <div style="border-top:1px solid var(--border);padding-top:.7rem;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:.8rem;color:var(--muted)">
+              💰 ${t.salary_type === 'per_session' ? `${formatPrice(t.salary)}/ca × ${present} ca` : 'Lương cố định'}
+            </span>
+            <span style="font-weight:700;color:var(--gold)">${formatPrice(salary)}</span>
+          </div>
+          <button class="btn btn-outline btn-sm" style="width:100%;margin-top:.6rem"
+            onclick="viewTeacherDetail(${t.teacher_id},'${t.full_name}','${month}')">
+            📋 Xem chi tiết
+          </button>
+        </div>`;
+    }).join('');
+  }
+
+  async function viewTeacherDetail(id, name, month) {
+    try {
+      const data = await api.get(`/timekeeping/teacher/${id}/${month}`);
+      // Group theo ngày
+      const byDate = {};
+      data.records.forEach(r => {
+        if (!byDate[r.work_date]) byDate[r.work_date] = [];
+        byDate[r.work_date].push(r);
+      });
+      const rows = Object.entries(byDate).map(([date, recs]) => {
+        const dayLabel = new Date(date + 'T00:00:00').toLocaleDateString('vi-VN',
+          { weekday:'short', day:'2-digit', month:'2-digit' });
+        const slots = recs.map(r => {
+          const info = STATUS[r.status] || STATUS[''];
+          return `<span style="font-size:.75rem;padding:.15rem .4rem;border-radius:4px;background:${
+            r.status==='present'?'rgba(76,175,128,.15)':r.status==='absent'?'rgba(224,85,85,.15)':
+            r.status==='late'?'rgba(255,165,0,.15)':'rgba(100,149,237,.15)'
+          };margin:.1rem">${info.icon} ${r.slot_label}</span>`;
+        }).join('');
+        return `<tr>
+          <td style="font-weight:500">${dayLabel}</td>
+          <td><div style="display:flex;flex-wrap:wrap;gap:.2rem">${slots}</div></td>
+          <td style="text-align:center;color:var(--green)">${recs.filter(r=>r.status==='present').length}</td>
+        </tr>`;
+      }).join('');
+
+      const { summary } = data;
+      document.getElementById('detailModal').style.display = 'flex';
+      document.getElementById('detailTitle').textContent = `${name} — Tháng ${month}`;
+      document.getElementById('detailBody').innerHTML = `
+        <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem">
+          <span style="color:var(--green)">✅ Có mặt: <strong>${summary.present}</strong></span>
+          <span style="color:var(--red)">❌ Vắng: <strong>${summary.absent}</strong></span>
+          <span style="color:orange">⏰ Trễ: <strong>${summary.late}</strong></span>
+          <span style="color:#6495ed">📝 Phép: <strong>${summary.leave}</strong></span>
+        </div>
+        <table style="width:100%">
+          <thead><tr><th style="text-align:left">Ngày</th><th>Ca đã chấm</th><th>Có mặt</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="3" style="text-align:center;color:var(--muted)">Không có dữ liệu</td></tr>'}</tbody>
+        </table>`;
+    } catch(e) { showToast(e.message,'error'); }
+  }
+
+  function exportData() {
+    showToast('Tính năng xuất Excel đang phát triển!', 'info');
+  }
+</script>
+
+<!-- MODAL CHI TIẾT -->
+<div class="modal-overlay" id="detailModal" style="display:none">
+  <div class="modal" style="max-width:660px;max-height:88vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3 id="detailTitle">Chi tiết chấm công</h3>
+      <button class="modal-close" onclick="document.getElementById('detailModal').style.display='none'">✕</button>
+    </div>
+    <div id="detailBody"></div>
+  </div>
+</div>
+</body>
+</html>
