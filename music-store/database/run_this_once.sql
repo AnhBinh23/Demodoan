@@ -263,9 +263,11 @@ INSERT IGNORE INTO news_posts (title,slug,excerpt,content,tag,is_featured,is_pub
  'Kiến thức',0,1);
 
 -- INDEX
-CREATE INDEX IF NOT EXISTS idx_news_slug      ON news_posts(slug);
-CREATE INDEX IF NOT EXISTS idx_news_published ON news_posts(is_published, published_at);
-CREATE INDEX IF NOT EXISTS idx_timekeeping_teacher ON teacher_timekeeping(teacher_id, work_date);
-CREATE INDEX IF NOT EXISTS idx_enrollments_student ON enrollments(student_id);
-
+CREATE INDEX idx_news_slug          ON news_posts(slug);
+CREATE INDEX idx_news_published     ON news_posts(is_published, published_at);
+CREATE INDEX idx_timekeeping_teacher ON teacher_timekeeping(teacher_id, work_date);
+CREATE INDEX idx_enrollments_student ON enrollments(student_id);
+CREATE INDEX idx_enrollments_class   ON enrollments(class_id);
+CREATE INDEX idx_classes_teacher     ON classes(teacher_id);
+CREATE INDEX idx_sessions_class      ON class_sessions(class_id)
 SELECT 'OK - Tất cả bảng đã tạo thành công!' AS result;
