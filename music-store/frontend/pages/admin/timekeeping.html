@@ -278,7 +278,10 @@
       allSlots    = data.slots;
       allTeachers = data.teachers;
       renderGrid(data);
-    } catch(e) { showToast(e.message, 'error'); }
+    } catch(e) { 
+      showToast(e.message, 'error');
+      document.getElementById('tkWrap').innerHTML = '<div class="empty-state"><div class="icon">👨‍🏫</div><p>'+e.message+'</p></div>';
+    }
   }
 
   // ======== RENDER LƯỚI ========

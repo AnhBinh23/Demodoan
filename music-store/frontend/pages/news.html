@@ -160,7 +160,7 @@
       renderFeatured(data.posts, page);
       renderGrid(data.posts);
       renderPagination(data.total_pages, page);
-    } catch(e) { showToast('Không thể tải tin tức!','error'); }
+    } catch(e) { showToast('Lỗi: '+e.message,'error'); console.error(e); document.getElementById('newsGrid').innerHTML='<div class=empty-state style=grid-column:1/-1><div class=icon>❌</div><p>'+e.message+'</p></div>'; }
   }
 
   // ====== FEATURED ======
