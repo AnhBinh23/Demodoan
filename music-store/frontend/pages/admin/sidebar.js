@@ -27,6 +27,7 @@ function renderSidebar(activePage) {
         { id:'orders',     icon:'📦', label:'Đơn hàng',     href:'orders.html',       show: isStaff },
         { id:'users',      icon:'👥', label:'Khách hàng',   href:'users.html',        show: isAdmin },
         { id:'sheets',     icon:'🎼', label:'Bản nhạc',     href:'admin-sheets.html', show: isAdmin },
+        { id:'news',       icon:'📰', label:'Tin tức',      href:'admin-news.html',   show: isAdmin },
     ];
     const centerItems = [
         { id:'teachers',     icon:'👨‍🏫', label:'Giáo viên',   href:'teachers.html',     show: isStaff },

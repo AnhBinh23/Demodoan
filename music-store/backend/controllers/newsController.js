@@ -1,3 +1,5 @@
+const db = require('../config/db');
+
 const toSlug = (str) => str.toLowerCase()
     .replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g,'a')
     .replace(/[èéẹẻẽêềếệểễ]/g,'e')
@@ -9,19 +11,16 @@ const toSlug = (str) => str.toLowerCase()
     .replace(/[^a-z0-9\s-]/g,'')
     .trim().replace(/\s+/g,'-');
 
-// ===== PUBLIC =====
 const getAll = async (req, res) => {
     try {
         const { page=1, limit=9, tag, search } = req.query;
         const offset = (page-1)*limit;
         let where = 'WHERE p.is_published=1';
         const params = [];
-        if (tag)    { where += ' AND p.tag=?';                           params.push(tag); }
+        if (tag)    { where += ' AND p.tag=?'; params.push(tag); }
         if (search) { where += ' AND (p.title LIKE ? OR p.excerpt LIKE ?)'; const q='%'+search+'%'; params.push(q,q); }
-
         const [[{total}]] = await db.query(
             `SELECT COUNT(*) as total FROM news_posts p ${where}`, params);
-
         const [posts] = await db.query(
             `SELECT p.post_id, p.title, p.slug, p.excerpt, p.thumbnail,
                     p.tag, p.is_featured, p.views, p.published_at,
@@ -45,9 +44,7 @@ const getBySlug = async (req, res) => {
              LEFT JOIN users u ON p.author_id=u.user_id
              WHERE p.slug=? AND p.is_published=1`, [req.params.slug]);
         if (!post) return res.status(404).json({ message:'Không tìm thấy bài viết!' });
-        // Tăng lượt xem
         await db.query('UPDATE news_posts SET views=views+1 WHERE post_id=?', [post.post_id]);
-        // Bài liên quan (cùng tag)
         const [related] = await db.query(
             `SELECT post_id, title, slug, thumbnail, tag, published_at
              FROM news_posts
@@ -67,7 +64,6 @@ const getTags = async (req, res) => {
     } catch(e) { res.status(500).json({ message:'Lỗi server!', error:e.message }); }
 };
 
-// ===== ADMIN =====
 const adminGetAll = async (req, res) => {
     try {
         const { page=1, limit=20, search } = req.query;
@@ -102,12 +98,10 @@ const create = async (req, res) => {
     try {
         const { title, excerpt, content, thumbnail, tag, is_featured, is_published } = req.body;
         if (!title || !content) return res.status(400).json({ message:'Thiếu tiêu đề hoặc nội dung!' });
-        // Tạo slug duy nhất
         let slug = toSlug(title);
         const [[{cnt}]] = await db.query(
             'SELECT COUNT(*) as cnt FROM news_posts WHERE slug=?', [slug]);
         if (cnt > 0) slug = slug + '-' + Date.now();
-
         const [r] = await db.query(
             `INSERT INTO news_posts
                 (title,slug,excerpt,content,thumbnail,tag,is_featured,is_published,author_id)
@@ -124,7 +118,6 @@ const update = async (req, res) => {
         const { title, excerpt, content, thumbnail, tag, is_featured, is_published } = req.body;
         const [[old]] = await db.query('SELECT * FROM news_posts WHERE post_id=?', [req.params.id]);
         if (!old) return res.status(404).json({ message:'Không tìm thấy!' });
-
         let slug = old.slug;
         if (title && title !== old.title) {
             slug = toSlug(title);
