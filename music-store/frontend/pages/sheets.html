@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Thư viện bản nhạc — Ascent-Music</title>
   <link rel="stylesheet" href="../css/style.css"/>
+
   <style>
     .sheets-grid {
       display: grid;
@@ -290,9 +291,28 @@
     document.getElementById('viewerDownload').download = title;
 
     const body = document.getElementById('viewerBody');
-    body.innerHTML = fileType === 'pdf'
-      ? `<iframe src="${fileUrl}" title="${title}"></iframe>`
-      : `<img src="${fileUrl}" alt="${title}"/>`;
+    if (fileType === 'pdf') {
+      // Dùng <embed> - trình duyệt tự render PDF, không cần CORS
+      body.innerHTML = `
+        <div style="width:100%;max-width:900px;height:82vh;display:flex;flex-direction:column;gap:.5rem">
+          <embed
+            src="${fileUrl}"
+            type="application/pdf"
+            width="100%"
+            height="100%"
+            style="border-radius:8px;flex:1"
+            onerror="this.outerHTML='<div style=\'text-align:center;padding:3rem;color:var(--muted)\'><p>Trình duyệt không hỗ trợ xem PDF trực tiếp.</p><a href=\'${fileUrl}\' target=\'_blank\' style=\'color:var(--gold)\'>👉 Mở PDF trong tab mới</a></div>'"
+          />
+          <div style="text-align:center">
+            <a href="${fileUrl}" target="_blank"
+               style="font-size:.8rem;color:var(--muted);text-decoration:none">
+              🔗 Mở PDF trong tab mới
+            </a>
+          </div>
+        </div>`;
+    } else {
+      body.innerHTML = `<img src="${fileUrl}" alt="${title}" style="max-width:900px;width:100%;border-radius:var(--radius)"/>`;
+    }
 
     document.getElementById('viewerOverlay').classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -305,6 +325,7 @@
   }
 
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeViewer(); });
+
   loadSheets();
 </script>
 </body>

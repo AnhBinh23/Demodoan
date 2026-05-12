@@ -259,7 +259,7 @@
             ${s.composer ? `♩ ${s.composer}  ·  ` : ''}${diffLabels[s.difficulty]}  ·  👁 ${s.view_count}
           </div>
           <div class="sheet-admin-actions">
-            <a href="${s.file_url}" target="_blank" class="btn btn-outline btn-sm" style="flex:1">👁 Xem</a>
+            <a href="${s.file_type==='pdf' ? 'https://docs.google.com/viewer?url='+encodeURIComponent(s.file_url) : s.file_url}" target="_blank" class="btn btn-outline btn-sm" style="flex:1">👁 Xem</a>
             <button class="btn btn-outline btn-sm" onclick="editSheet(${s.sheet_id})">✏️</button>
             <button class="btn btn-danger btn-sm"  onclick="deleteSheet(${s.sheet_id},'${s.title.replace(/'/g,"\\'")}')">🗑</button>
           </div>
@@ -282,7 +282,7 @@
         <td style="color:var(--muted)">👁 ${s.view_count}</td>
         <td><span class="badge ${s.is_active?'badge-active':'badge-inactive'}">${s.is_active?'Hiện':'Ẩn'}</span></td>
         <td style="display:flex;gap:0.4rem">
-          <a href="${s.file_url}" target="_blank" class="btn btn-outline btn-sm">👁</a>
+          <a href="${s.file_type==='pdf' ? 'https://docs.google.com/viewer?url='+encodeURIComponent(s.file_url) : s.file_url}" target="_blank" class="btn btn-outline btn-sm">👁</a>
           <button class="btn btn-outline btn-sm" onclick="editSheet(${s.sheet_id})">✏️</button>
           <button class="btn btn-danger btn-sm"  onclick="deleteSheet(${s.sheet_id},'${s.title.replace(/'/g,"\\'")}')">🗑</button>
         </td>

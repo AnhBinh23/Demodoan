@@ -184,14 +184,16 @@ const createSheet = async (req, res) => {
                 ? 'pdf'
                 : 'image';
 
+        // PDF dùng 'raw' để giữ nguyên file, ảnh dùng 'image'
+        const uploadType = ext === '.pdf' ? 'raw' : 'image';
         const sheetResult = await uploadToCloudinary(
             sheetFile.buffer,
             'ascent-music/sheets/files',
-            'auto'
+            uploadType
         );
 
-        // Dùng URL thường để PDF mở được
-        const fileUrl = sheetResult.url;
+        // Dùng secure_url (HTTPS) để Google Docs Viewer đọc được
+        const fileUrl = sheetResult.secure_url;
 
         // ================= THUMBNAIL =================
         let thumbnailUrl = null;
@@ -318,7 +320,7 @@ const updateSheet = async (req, res) => {
                 await uploadToCloudinary(
                     sheetFile.buffer,
                     'ascent-music/sheets/files',
-                    'auto'
+                    ext === '.pdf' ? 'raw' : 'image'
                 );
 
             sets.push(
@@ -327,7 +329,7 @@ const updateSheet = async (req, res) => {
             );
 
             vals.push(
-                result.url,
+                result.secure_url,
                 fileType
             );
 
