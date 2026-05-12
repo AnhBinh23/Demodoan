@@ -260,7 +260,14 @@
   // XỬ LÝ ẢNH PHỤ
   // =============================================
   function addThumbImgs(input) {
-    const files     = Array.from(input.files);
+    const allowed   = ['image/jpeg','image/jpg','image/png','image/webp'];
+    const files     = Array.from(input.files).filter(f => {
+      if (!allowed.includes(f.type)) {
+        showToast(`"${f.name}" không phải ảnh hợp lệ! Chỉ nhận JPG, PNG, WEBP`, 'error');
+        return false;
+      }
+      return true;
+    });
     const remaining = 4 - thumbFiles.length - existingThumb.length;
     const toAdd     = files.slice(0, remaining);
     if (files.length > remaining) showToast('Tối đa 4 ảnh phụ!', 'info');
@@ -373,7 +380,6 @@
     btn.disabled = true; btn.textContent = 'Đang lưu...';
 
     try {
-      const token    = localStorage.getItem('token');
       const formData = new FormData();
 
       // Thông tin sản phẩm
@@ -396,16 +402,8 @@
       // ✅ Ảnh phụ mới (nếu có)
       thumbFiles.forEach(file => formData.append('thumb_images', file));
 
-      const url    = `http://localhost:5000/api/products${id ? '/' + id : ''}`;
-      const method = id ? 'PUT' : 'POST';
-
-      const res  = await fetch(url, {
-        method,
-        headers: { 'Authorization': 'Bearer ' + token },
-        body: formData
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Có lỗi xảy ra!');
+      const path = '/products' + (id ? '/' + id : '');
+      const data = id ? await api.putForm(path, formData) : await api.postForm(path, formData);
 
       showToast(id ? 'Cập nhật thành công!' : 'Thêm sản phẩm thành công!', 'success');
       closeModal();

@@ -10,7 +10,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 
 router.get('/',    getAllSheets);
 router.get('/:id', getSheetById);
 router.post('/',   verifyAdmin, upload.fields([{ name: 'sheet_file', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), createSheet);
-router.put('/:id', verifyAdmin, updateSheet);
+router.put('/:id', verifyAdmin, upload.fields([{ name: 'sheet_file', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), updateSheet);
 router.delete('/:id', verifyAdmin, deleteSheet);
 
 module.exports = router;

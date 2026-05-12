@@ -173,7 +173,12 @@
 
     <!-- FILE UPLOAD -->
     <div class="form-group" id="fileGroup">
-      <label class="form-label">File bản nhạc * <span style="color:var(--muted);font-weight:400">(PDF hoặc ảnh JPG/PNG, tối đa 20MB)</span></label>
+      <label class="form-label" id="fileLabel">File bản nhạc * <span style="color:var(--muted);font-weight:400">(PDF hoặc ảnh JPG/PNG, tối đa 20MB)</span></label>
+      <div id="currentFileInfo" style="display:none;padding:0.7rem 1rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:0.5rem;font-size:0.85rem">
+        <span style="color:var(--muted)">📎 File hiện tại: </span>
+        <a id="currentFileLink" href="#" target="_blank" style="color:var(--gold)">Xem file</a>
+        <span style="color:var(--muted);margin-left:0.5rem">(chọn file mới bên dưới để thay thế)</span>
+      </div>
       <div class="upload-zone" id="uploadZone">
         <input type="file" id="fFile" accept=".pdf,.jpg,.jpeg,.png" onchange="previewFile(this,'filePreview','uploadZone')"/>
         <div class="icon">📄</div>
@@ -334,7 +339,19 @@
     document.getElementById('fInstrument').value   = s?.instrument || 'Piano';
     document.getElementById('fDifficulty').value   = s?.difficulty || 'beginner';
     document.getElementById('fDesc').value         = s?.description || '';
-    document.getElementById('fileGroup').style.display = s ? 'none' : 'block';
+    // Luôn hiện file group, khi sửa thì hiện info file cũ
+    document.getElementById('fileGroup').style.display = 'block';
+    document.getElementById('fileLabel').innerHTML = s
+      ? 'Thay file bản nhạc <span style="color:var(--muted);font-weight:400">(tùy chọn — để trống nếu không muốn thay)</span>'
+      : 'File bản nhạc * <span style="color:var(--muted);font-weight:400">(PDF hoặc ảnh JPG/PNG, tối đa 20MB)</span>';
+    const curInfo = document.getElementById('currentFileInfo');
+    if (s && s.file_url) {
+      curInfo.style.display = 'block';
+      document.getElementById('currentFileLink').href = s.file_url;
+      document.getElementById('currentFileLink').textContent = s.title + '.' + (s.file_type || 'pdf');
+    } else {
+      curInfo.style.display = 'none';
+    }
     document.getElementById('uploadProgress').style.display = 'none';
     ['filePreview','thumbPreview'].forEach(id => document.getElementById(id).style.display = 'none');
     ['uploadZone','thumbZone'].forEach(id => document.getElementById(id).style.display = 'block');
@@ -359,13 +376,34 @@
 
     try {
       if (id) {
-        await api.put('/sheets/' + id, {
-          title, composer: document.getElementById('fComposer').value.trim(),
-          instrument: document.getElementById('fInstrument').value,
-          difficulty: document.getElementById('fDifficulty').value,
-          description: document.getElementById('fDesc').value,
-          is_free: 1, is_active: 1,
-        });
+        const newFile = document.getElementById('fFile').files[0];
+        const newThumb = document.getElementById('fThumb').files[0];
+        if (newFile || newThumb) {
+          // Có file mới → dùng FormData
+          const fd = new FormData();
+          fd.append('title',       title);
+          fd.append('composer',    document.getElementById('fComposer').value.trim());
+          fd.append('instrument',  document.getElementById('fInstrument').value);
+          fd.append('difficulty',  document.getElementById('fDifficulty').value);
+          fd.append('description', document.getElementById('fDesc').value);
+          fd.append('is_free', '1'); fd.append('is_active', '1');
+          if (newFile)  fd.append('sheet_file', newFile);
+          if (newThumb) fd.append('thumbnail',  newThumb);
+          document.getElementById('uploadProgress').style.display = 'block';
+          document.getElementById('progressBar').style.width = '40%';
+          document.getElementById('progressText').textContent = 'Đang tải file lên...';
+          await api.putForm('/sheets/' + id, fd);
+          document.getElementById('progressBar').style.width = '100%';
+        } else {
+          // Không có file mới → gửi JSON bình thường
+          await api.put('/sheets/' + id, {
+            title, composer: document.getElementById('fComposer').value.trim(),
+            instrument: document.getElementById('fInstrument').value,
+            difficulty: document.getElementById('fDifficulty').value,
+            description: document.getElementById('fDesc').value,
+            is_free: 1, is_active: 1,
+          });
+        }
         showToast('Cập nhật thành công!', 'success');
       } else {
         const fileInput = document.getElementById('fFile');

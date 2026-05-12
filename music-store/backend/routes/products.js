@@ -1,21 +1,49 @@
 const express = require('express');
-const router  = express.Router();
-const multer  = require('multer');
-const { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct } = require('../controllers/productController');
+const router = express.Router();
+
+const {
+    getAllProducts,
+    getProductById,
+    createProduct,
+    updateProduct,
+    deleteProduct
+} = require('../controllers/productController');
+
 const { verifyAdmin } = require('../middleware/auth');
 
-const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024 }
-}).fields([
-    { name: 'image',        maxCount: 1 },
-    { name: 'thumb_images', maxCount: 4 },
-]);
+const {
+    uploadProductImage
+} = require('../config/cloudinary');
 
-router.get('/',       getAllProducts);
-router.get('/:id',    getProductById);
-router.post('/',      verifyAdmin, upload, createProduct);
-router.put('/:id',    verifyAdmin, upload, updateProduct);
-router.delete('/:id', verifyAdmin, deleteProduct);
+// ================= ROUTES =================
+
+// Lấy danh sách sản phẩm
+router.get('/', getAllProducts);
+
+// Lấy chi tiết sản phẩm
+router.get('/:id', getProductById);
+
+// Thêm sản phẩm
+router.post(
+    '/',
+    verifyAdmin,
+    uploadProductImage,
+    createProduct
+);
+
+// Cập nhật sản phẩm
+router.put(
+    '/:id',
+    verifyAdmin,
+    uploadProductImage,
+    updateProduct
+);
+
+// Xóa sản phẩm
+router.delete(
+    '/:id',
+    verifyAdmin,
+    deleteProduct
+);
 
 module.exports = router;

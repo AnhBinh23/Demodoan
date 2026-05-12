@@ -1,78 +1,96 @@
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
-const path   = require('path');
-const fs     = require('fs');
+require('dotenv').config();
 
-// Tạo thư mục nếu chưa có
-const ensureDir = (dir) => {
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-};
-
-// Cấu hình storage cho ảnh sản phẩm
-const productStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const dir = path.join(__dirname, '../public/images/products');
-        ensureDir(dir);
-        cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, 'product_' + Date.now() + ext);
-    }
+// ================= CONFIG CLOUDINARY =================
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Cấu hình storage cho ảnh danh mục
-const categoryStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const dir = path.join(__dirname, '../public/images/categories');
-        ensureDir(dir);
-        cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, 'category_' + Date.now() + ext);
-    }
+// ================= STORAGE ẢNH SẢN PHẨM =================
+const productStorage = new CloudinaryStorage({
+    cloudinary,
+    params: async (req, file) => ({
+        folder: 'ascent-music/products',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+        transformation: [{ width: 800, height: 600, crop: 'limit' }],
+    }),
 });
 
-// Cấu hình storage cho sheet nhạc
-const sheetStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        let dir;
-        if (file.fieldname === 'thumbnail') {
-            dir = path.join(__dirname, '../public/images/sheets');
-        } else {
-            dir = path.join(__dirname, '../public/sheets');
-        }
-        ensureDir(dir);
-        cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        const prefix = file.fieldname === 'thumbnail' ? 'thumb_' : 'sheet_';
-        cb(null, prefix + Date.now() + ext);
-    }
+// ================= STORAGE ẢNH DANH MỤC =================
+const categoryStorage = new CloudinaryStorage({
+    cloudinary,
+    params: async (req, file) => ({
+        folder: 'ascent-music/categories',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+        transformation: [{ width: 600, height: 400, crop: 'limit' }],
+    }),
 });
 
-// Filter chỉ cho phép ảnh
-const imageFilter = (req, file, cb) => {
-    const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) cb(null, true);
-    else cb(new Error('Chỉ chấp nhận file ảnh (JPG, PNG, WEBP)!'), false);
-};
+// ================= STORAGE THUMBNAIL SHEET =================
+const sheetThumbStorage = new CloudinaryStorage({
+    cloudinary,
+    params: async (req, file) => ({
+        folder: 'ascent-music/sheets/thumbnails',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    }),
+});
 
-// Filter cho sheet nhạc (PDF + ảnh)
-const sheetFilter = (req, file, cb) => {
-    const allowed = ['.pdf', '.jpg', '.jpeg', '.png'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) cb(null, true);
-    else cb(new Error('Chỉ chấp nhận PDF hoặc ảnh!'), false);
-};
+// ================= STORAGE FILE SHEET =================
+const sheetFileStorage = new CloudinaryStorage({
+    cloudinary,
+    params: async (req, file) => ({
+        folder: 'ascent-music/sheets/files',
+        resource_type: 'auto',
+        allowed_formats: ['pdf', 'jpg', 'jpeg', 'png'],
+    }),
+});
+
+// ================= MULTER =================
+const uploadProductImage = multer({
+    storage: productStorage,
+    limits: {
+        fileSize: 5 * 1024 * 1024,
+    },
+}).single('image');
+
+const uploadCategoryImage = multer({
+    storage: categoryStorage,
+    limits: {
+        fileSize: 5 * 1024 * 1024,
+    },
+}).single('image');
+
+const uploadSheetThumb = multer({
+    storage: sheetThumbStorage,
+    limits: {
+        fileSize: 5 * 1024 * 1024,
+    },
+}).single('thumbnail');
+
+const uploadSheetFile = multer({
+    storage: sheetFileStorage,
+    limits: {
+        fileSize: 20 * 1024 * 1024,
+    },
+}).single('sheet_file');
+
+// Upload cả thumbnail + pdf
+const uploadSheet = multer({
+    storage: multer.memoryStorage(),
+}).fields([
+    { name: 'sheet_file', maxCount: 1 },
+    { name: 'thumbnail', maxCount: 1 },
+]);
 
 module.exports = {
-    uploadProductImage:  multer({ storage: productStorage,  fileFilter: imageFilter, limits: { fileSize: 5  * 1024 * 1024 } }).single('image'),
-    uploadCategoryImage: multer({ storage: categoryStorage, fileFilter: imageFilter, limits: { fileSize: 5  * 1024 * 1024 } }).single('image'),
-    uploadSheet:         multer({ storage: sheetStorage,    fileFilter: sheetFilter, limits: { fileSize: 20 * 1024 * 1024 } }).fields([
-        { name: 'sheet_file', maxCount: 1 },
-        { name: 'thumbnail',  maxCount: 1 },
-    ]),
+    cloudinary,
+    uploadProductImage,
+    uploadCategoryImage,
+    uploadSheetThumb,
+    uploadSheetFile,
+    uploadSheet,
 };
