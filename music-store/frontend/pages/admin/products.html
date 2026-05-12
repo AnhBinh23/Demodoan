@@ -230,6 +230,13 @@
   // =============================================
   function previewMainImg(input) {
     if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      showToast('Chỉ chấp nhận ảnh JPG, PNG, WEBP!', 'error');
+      input.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = e => {
       const preview = document.getElementById('mainImgPreview');

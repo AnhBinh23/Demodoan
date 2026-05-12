@@ -221,6 +221,60 @@
 
   function closeModal() { document.getElementById('userModal').style.display = 'none'; }
 
+  function openAddAdminModal() {
+    currentUserId = null;
+    document.getElementById('modalTitle').textContent = '➕ Thêm tài khoản Admin/Staff';
+    document.getElementById('modalContent').innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:1rem;padding:1rem 0">
+        <div>
+          <label style="font-size:0.85rem;color:var(--muted);display:block;margin-bottom:4px">Họ tên *</label>
+          <input id="newFullName" type="text" class="form-control" placeholder="Nguyễn Văn A" style="width:100%;padding:0.6rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"/>
+        </div>
+        <div>
+          <label style="font-size:0.85rem;color:var(--muted);display:block;margin-bottom:4px">Email *</label>
+          <input id="newEmail" type="email" class="form-control" placeholder="admin@example.com" style="width:100%;padding:0.6rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"/>
+        </div>
+        <div>
+          <label style="font-size:0.85rem;color:var(--muted);display:block;margin-bottom:4px">Mật khẩu * (ít nhất 6 ký tự)</label>
+          <input id="newPassword" type="password" class="form-control" placeholder="••••••••" style="width:100%;padding:0.6rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"/>
+        </div>
+        <div>
+          <label style="font-size:0.85rem;color:var(--muted);display:block;margin-bottom:4px">Số điện thoại</label>
+          <input id="newPhone" type="tel" class="form-control" placeholder="0901234567" style="width:100%;padding:0.6rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"/>
+        </div>
+        <div>
+          <label style="font-size:0.85rem;color:var(--muted);display:block;margin-bottom:4px">Phân quyền *</label>
+          <select id="newRole" style="width:100%;padding:0.6rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)">
+            <option value="admin">👑 Admin (toàn quyền)</option>
+            <option value="staff">🛠️ Staff (nhân viên)</option>
+          </select>
+        </div>
+      </div>`;
+    const saveBtn = document.getElementById('saveUserBtn');
+    saveBtn.style.display = 'inline-flex';
+    saveBtn.textContent = 'Tạo tài khoản';
+    saveBtn.onclick = createAdminAccount;
+    document.getElementById('userModal').style.display = 'flex';
+  }
+
+  async function createAdminAccount() {
+    const full_name = document.getElementById('newFullName').value.trim();
+    const email     = document.getElementById('newEmail').value.trim();
+    const password  = document.getElementById('newPassword').value;
+    const phone     = document.getElementById('newPhone').value.trim();
+    const role      = document.getElementById('newRole').value;
+    if (!full_name || !email || !password) { showToast('Vui lòng điền đầy đủ thông tin bắt buộc!', 'error'); return; }
+    const btn = document.getElementById('saveUserBtn');
+    btn.disabled = true; btn.textContent = 'Đang tạo...';
+    try {
+      await api.post('/users/admin/create', { full_name, email, password, phone, role });
+      showToast('Tạo tài khoản thành công! 🎉', 'success');
+      closeModal();
+      await loadUsers();
+    } catch(e) { showToast(e.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Tạo tài khoản'; }
+  }
+
   loadUsers();
 </script>
 </body>

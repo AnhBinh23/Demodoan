@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const bcrypt = require('bcrypt');
 // Lấy tất cả ca (work slots)
 
 const getSlots = async (req, res) => {

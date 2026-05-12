@@ -387,18 +387,12 @@
         document.getElementById('progressBar').style.width = '30%';
         document.getElementById('progressText').textContent = 'Đang tải file lên...';
 
-        const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5000/api/sheets', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + token },
-          body: formData,
-        });
+        const data = await api.postForm('/sheets', formData);
 
         document.getElementById('progressBar').style.width = '100%';
         document.getElementById('progressText').textContent = 'Hoàn thành!';
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
+        if (!data) throw new Error('Upload thất bại!');
         showToast('Upload bản nhạc thành công! 🎼', 'success');
       }
 

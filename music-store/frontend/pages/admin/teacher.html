@@ -70,6 +70,46 @@
 </main>
 
 <!-- MODAL -->
+<!-- MODAL HỒ SƠ GIÁO VIÊN -->
+<div id="profileModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:1.2rem 1.5rem;border-bottom:1px solid var(--border)">
+      <div style="font-size:1.1rem;font-weight:700">👤 Hồ sơ giáo viên</div>
+      <button onclick="closeProfileModal()" style="background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <!-- Tabs -->
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border)">
+      <button id="tab-info" onclick="switchTab('info')" class="active-tab"
+        style="flex:1;padding:.75rem;background:none;border:none;cursor:pointer;font-size:.88rem;transition:.2s;color:var(--text)">
+        👁️ Thông tin
+      </button>
+      <button id="tab-schedule" onclick="switchTab('schedule')"
+        style="flex:1;padding:.75rem;background:none;border:none;cursor:pointer;font-size:.88rem;transition:.2s;color:var(--text)">
+        📅 Lịch dạy
+      </button>
+      <button id="tab-salary" onclick="switchTab('salary')"
+        style="flex:1;padding:.75rem;background:none;border:none;cursor:pointer;font-size:.88rem;transition:.2s;color:var(--text)">
+        💰 Tính lương
+      </button>
+    </div>
+    <style>
+      .active-tab { border-bottom: 2px solid var(--gold) !important; color: var(--gold) !important; font-weight:600; }
+    </style>
+    <!-- Panels -->
+    <div style="flex:1;overflow-y:auto;padding:1.5rem">
+      <div id="panel-info"></div>
+      <div id="panel-schedule" style="display:none"></div>
+      <div id="panel-salary" style="display:none">
+        <div style="display:flex;gap:1rem;align-items:center;margin-bottom:1rem">
+          <label style="font-size:.87rem;color:var(--muted)">📅 Chọn tháng:</label>
+          <input type="month" id="salaryMonth" style="padding:.4rem .7rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"/>
+        </div>
+        <p style="color:var(--muted);text-align:center;padding:2rem">Chọn tab để tải dữ liệu</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="teacherModal" style="display:none">
   <div class="modal" style="max-width:580px;max-height:90vh;overflow-y:auto">
     <div class="modal-header">
@@ -213,6 +253,7 @@
         <td style="color:var(--muted);font-size:.85rem">${t.join_date ? new Date(t.join_date).toLocaleDateString('vi-VN') : '—'}</td>
         <td><span class="badge ${t.is_active ? 'badge-active' : 'badge-inactive'}">${t.is_active ? 'Đang làm' : 'Đã nghỉ'}</span></td>
         <td style="display:flex;gap:.4rem">
+          <button class="btn btn-sm" onclick="viewTeacher(${t.teacher_id})" style="background:rgba(100,149,237,.15);border:1px solid #6495ed;color:#6495ed">👁️ Xem</button>
           <button class="btn btn-outline btn-sm" onclick="editTeacher(${t.teacher_id})">✏️ Sửa</button>
           <button class="btn btn-danger  btn-sm" onclick="deleteTeacher(${t.teacher_id},'${t.full_name.replace(/'/g,"\\'")}')">🗑</button>
         </td>
@@ -321,6 +362,176 @@
       await api.delete('/center/teachers/' + id);
       showToast('Đã xóa giáo viên!', 'success'); await loadTeachers();
     } catch(e) { showToast(e.message, 'error'); }
+  }
+
+
+
+  // =============================================
+  // HỒ SƠ GIÁO VIÊN - Modal 3 tab
+  // =============================================
+  let currentViewId = null;
+
+  async function viewTeacher(id) {
+    currentViewId = id;
+    document.getElementById('profileModal').style.display = 'flex';
+    switchTab('info');
+    loadProfileInfo(id);
+  }
+
+  function closeProfileModal() {
+    document.getElementById('profileModal').style.display = 'none';
+  }
+
+  function switchTab(tab) {
+    ['info','schedule','salary'].forEach(t => {
+      document.getElementById('tab-' + t).classList.toggle('active-tab', t === tab);
+      document.getElementById('panel-' + t).style.display = t === tab ? 'block' : 'none';
+    });
+    if (tab === 'schedule') loadSchedule(currentViewId);
+    if (tab === 'salary')   loadSalary(currentViewId);
+  }
+
+  async function loadProfileInfo(id) {
+    const panel = document.getElementById('panel-info');
+    panel.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem">Đang tải...</p>';
+    try {
+      const t = await api.get('/center/teachers/' + id);
+      const levelMap = { beginner:'Cơ bản', intermediate:'Trung cấp', advanced:'Nâng cao' };
+      panel.innerHTML = `
+        <div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap">
+          <div style="text-align:center;flex-shrink:0">
+            <img src="${t.avatar ? 'http://localhost:5000'+t.avatar : ''}" onerror="this.src=''" alt=""
+              style="width:90px;height:90px;border-radius:50%;object-fit:cover;background:var(--surface2);border:2px solid var(--border)"/>
+            <div style="margin-top:.5rem;font-weight:600">${t.full_name}</div>
+            <span class="badge ${t.is_active?'badge-active':'badge-inactive'}" style="margin-top:.3rem">${t.is_active?'Đang làm':'Đã nghỉ'}</span>
+          </div>
+          <div style="flex:1;min-width:220px;display:grid;grid-template-columns:1fr 1fr;gap:.6rem .8rem;font-size:.87rem">
+            ${infoRow('📧 Email', t.email)}
+            ${infoRow('📞 Điện thoại', t.phone||'—')}
+            ${infoRow('🎵 Chuyên môn', t.specialty)}
+            ${infoRow('🎓 Bằng cấp', t.degree||'—')}
+            ${infoRow('📅 Kinh nghiệm', (t.experience_years||0)+' năm')}
+            ${infoRow('🗓️ Ngày vào làm', t.join_date ? new Date(t.join_date).toLocaleDateString('vi-VN') : '—')}
+            ${infoRow('💰 Lương', formatPrice(t.salary) + (t.salary_type==='monthly'?' /tháng':' /buổi'))}
+          </div>
+        </div>
+        ${t.bio ? `<div style="margin-top:1rem;padding:.8rem;background:var(--surface2);border-radius:8px;font-size:.87rem;color:var(--muted)">${t.bio}</div>` : ''}
+        <div style="margin-top:1.2rem">
+          <div style="font-weight:600;margin-bottom:.6rem">📚 Lớp đang phụ trách (${t.classes?.length||0} lớp)</div>
+          ${!t.classes?.length ? '<p style="color:var(--muted);font-size:.85rem">Chưa có lớp nào</p>' :
+            t.classes.map(c => `
+              <div style="padding:.6rem .8rem;background:var(--surface2);border-radius:8px;margin-bottom:.4rem;display:flex;justify-content:space-between;align-items:center;font-size:.86rem">
+                <div>
+                  <span style="font-weight:600">${c.class_name}</span>
+                  <span style="color:var(--muted);margin-left:.5rem">${c.course_name}</span>
+                </div>
+                <div style="display:flex;gap:.8rem;color:var(--muted)">
+                  <span>👥 ${c.student_count||0} HV</span>
+                  <span class="badge ${c.status==='ongoing'?'badge-active':'badge-inactive'}" style="font-size:.75rem">${c.status==='ongoing'?'Đang dạy':'Kết thúc'}</span>
+                </div>
+              </div>`).join('')}
+        </div>`;
+    } catch(e) { panel.innerHTML = `<p style="color:red;text-align:center">${e.message}</p>`; }
+  }
+
+  function infoRow(label, value) {
+    return `<div><span style="color:var(--muted)">${label}</span><div style="font-weight:500;margin-top:.15rem">${value}</div></div>`;
+  }
+
+  async function loadSchedule(id) {
+    const panel = document.getElementById('panel-schedule');
+    panel.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem">Đang tải lịch dạy...</p>';
+    try {
+      const classes = await api.get('/center/classes?teacher_id=' + id);
+      if (!classes.length) { panel.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem">Giáo viên chưa có lớp nào</p>'; return; }
+      const dayMap = { Mon:'Thứ 2',Tue:'Thứ 3',Wed:'Thứ 4',Thu:'Thứ 5',Fri:'Thứ 6',Sat:'Thứ 7',Sun:'CN' };
+      panel.innerHTML = `
+        <div style="display:grid;gap:.7rem">
+          ${classes.map(c => {
+            const days = (c.schedule_days||'').split(',').map(d => dayMap[d.trim()]||d).join(', ');
+            return `
+            <div style="padding:.8rem 1rem;background:var(--surface2);border-radius:10px;border-left:3px solid ${c.status==='ongoing'?'var(--gold)':'var(--border)'}">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.3rem">
+                <div>
+                  <span style="font-weight:600;font-size:.95rem">${c.class_name}</span>
+                  <span style="color:var(--muted);font-size:.82rem;margin-left:.5rem">${c.course_name}</span>
+                </div>
+                <span class="badge ${c.status==='ongoing'?'badge-active':'badge-inactive'}" style="font-size:.75rem">${c.status==='ongoing'?'Đang dạy':'Kết thúc'}</span>
+              </div>
+              <div style="margin-top:.5rem;display:flex;gap:1rem;flex-wrap:wrap;font-size:.83rem;color:var(--muted)">
+                ${days ? `<span>📅 ${days}</span>` : ''}
+                ${c.schedule_time ? `<span>🕐 ${c.schedule_time}</span>` : ''}
+                ${c.room ? `<span>🏫 Phòng ${c.room}</span>` : ''}
+                <span>👥 ${c.student_count||0}/${c.max_students} HV</span>
+              </div>
+              <div style="margin-top:.3rem;font-size:.8rem;color:var(--muted)">
+                ${c.start_date ? '🗓️ '+new Date(c.start_date).toLocaleDateString('vi-VN') : ''} 
+                ${c.end_date   ? '→ '+new Date(c.end_date).toLocaleDateString('vi-VN') : ''}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`;
+    } catch(e) { panel.innerHTML = `<p style="color:red;text-align:center">${e.message}</p>`; }
+  }
+
+  async function loadSalary(id) {
+    const panel = document.getElementById('panel-salary');
+    const monthEl = document.getElementById('salaryMonth');
+    const month = monthEl ? monthEl.value : new Date().toISOString().slice(0,7);
+    panel.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem">Đang tính lương...</p>';
+    try {
+      const [teacher, tk] = await Promise.all([
+        api.get('/center/teachers/' + id),
+        api.get('/timekeeping/teacher/' + id + '/' + month)
+      ]);
+      const s = tk.summary;
+      const perSession = teacher.salary_type === 'per_session';
+      const earned = perSession
+        ? (s.present + s.late) * teacher.salary
+        : teacher.salary;
+      const rows = tk.records;
+      panel.innerHTML = `
+        <div style="display:flex;gap:1rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
+          <label style="font-size:.87rem;color:var(--muted)">📅 Chọn tháng:</label>
+          <input type="month" id="salaryMonth" value="${month}"
+            style="padding:.4rem .7rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"
+            onchange="loadSalary(${id})"/>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:1rem">
+          ${salaryCard('✅ Có mặt', s.present, '#4caf80')}
+          ${salaryCard('⏰ Đi trễ', s.late, '#f59e0b')}
+          ${salaryCard('❌ Vắng', s.absent, '#ef4444')}
+          ${salaryCard('🏖️ Nghỉ phép', s.leave, '#6495ed')}
+        </div>
+        <div style="padding:1rem;background:rgba(201,168,76,.1);border:1px solid var(--gold);border-radius:10px;margin-bottom:1rem">
+          <div style="font-size:.85rem;color:var(--muted);margin-bottom:.3rem">
+            ${perSession
+              ? `Lương theo buổi: ${formatPrice(teacher.salary)}/buổi × ${s.present+s.late} buổi (có mặt + trễ)`
+              : `Lương tháng cố định`}
+          </div>
+          <div style="font-size:1.4rem;font-weight:700;color:var(--gold)">💰 ${formatPrice(earned)}</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:.2rem">Tháng ${month}</div>
+        </div>
+        <div style="font-weight:600;margin-bottom:.5rem;font-size:.88rem">Chi tiết chấm công</div>
+        <div style="max-height:200px;overflow-y:auto;display:grid;gap:.3rem">
+          ${!rows.length ? '<p style="color:var(--muted);font-size:.85rem;text-align:center">Chưa có dữ liệu chấm công tháng này</p>' :
+            rows.map(r => {
+              const statusColor = {present:'#4caf80',late:'#f59e0b',absent:'#ef4444',leave:'#6495ed'}[r.status]||'var(--muted)';
+              const statusText  = {present:'Có mặt',late:'Đi trễ',absent:'Vắng',leave:'Nghỉ phép'}[r.status]||r.status;
+              return `<div style="display:flex;justify-content:space-between;padding:.4rem .7rem;background:var(--surface2);border-radius:6px;font-size:.83rem">
+                <span>${new Date(r.work_date).toLocaleDateString('vi-VN')} — ${r.slot_label}</span>
+                <span style="color:${statusColor};font-weight:600">${statusText}</span>
+              </div>`;
+            }).join('')}
+        </div>`;
+    } catch(e) { panel.innerHTML = `<p style="color:red;text-align:center">${e.message}</p>`; }
+  }
+
+  function salaryCard(label, val, color) {
+    return `<div style="padding:.7rem;background:var(--surface2);border-radius:8px;text-align:center">
+      <div style="font-size:1.4rem;font-weight:700;color:${color}">${val}</div>
+      <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem">${label}</div>
+    </div>`;
   }
 
   loadTeachers();
