@@ -10,20 +10,18 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/images', express.static(path.join(__dirname, 'public/images')));
 app.use('/sheets', express.static(path.join(__dirname, 'public/sheets')));
-// Debug path
-const frontendDir = path.join(__dirname, '../frontend');
-console.log('📁 Frontend path:', frontendDir);
-console.log('📁 Frontend exists:', fs.existsSync(frontendDir));
-app.use(express.static(frontendDir));
-
-// Fallback: nếu không tìm thấy file, trả về thông báo
-app.get('/pages/*', (req, res) => {
-  const filePath = path.join(frontendDir, req.path);
-  console.log('Requested:', filePath, 'Exists:', fs.existsSync(filePath));
-  if (!fs.existsSync(frontendDir)) {
-    res.status(404).send('Frontend directory not found: ' + frontendDir);
-  }
-});
+// Serve frontend - thử nhiều path
+const possiblePaths = [
+  path.join(__dirname, '../frontend'),      // local & music-store root
+  path.join(__dirname, 'frontend'),         // nếu copy vào backend
+  '/app/frontend',                          // Railway absolute path
+  path.join(process.cwd(), 'frontend'),     // từ working dir
+];
+const frontendDir = possiblePaths.find(p => fs.existsSync(p));
+console.log('📁 Frontend found at:', frontendDir || 'NOT FOUND');
+console.log('📁 CWD:', process.cwd());
+console.log('📁 __dirname:', __dirname);
+if (frontendDir) app.use(express.static(frontendDir));
 
 app.use('/api/auth',        require('./routes/auth'));
 app.use('/api/categories',  require('./routes/categories'));
