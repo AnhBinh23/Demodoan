@@ -1,5 +1,5 @@
 const db = require('../config/db');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const getInstruments = async (req, res) => {
     try {
         const [rows] = await db.query('SELECT * FROM instruments WHERE is_active=1 ORDER BY instrument_id');
@@ -101,8 +101,7 @@ const getAllClasses = async (req, res) => {
 const getClassDetail = async (req, res) => {
     try {
         const [[cls]] = await db.query(`
-            SELECT cl.*, co.course_name, co.tuition_fee,
-                COALESCE(ct.total_sessions, 0) AS sessions_total,
+            SELECT cl.*, co.course_name, co.tuition_fee, co.sessions_total,
                 ct.type_name, ct.total_sessions, ct.students_per_class,
                 t.full_name AS teacher_name, t.phone AS teacher_phone,
                 i.name AS instrument_name, i.icon AS instrument_icon

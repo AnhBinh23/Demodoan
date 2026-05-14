@@ -1,5 +1,5 @@
 const db = require('../config/db');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 // ADMIN: Tạo tài khoản admin/staff mới
 const createAdmin = async (req, res) => {
