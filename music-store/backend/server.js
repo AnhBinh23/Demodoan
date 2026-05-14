@@ -51,7 +51,7 @@ app.get('/api', (req, res) => res.json({ message: '🎵 Ascent-Music API đang c
 
 // Catch-all: trả về index.html cho SPA
 if (frontendPath) {
-    app.get('*', (req, res) => {
+    app.get(/.*/, (req, res) => {
         const indexPath = path.join(frontendPath, 'index.html');
         if (fs.existsSync(indexPath)) res.sendFile(indexPath);
         else res.status(404).json({ message: 'Not found' });
