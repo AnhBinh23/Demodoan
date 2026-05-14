@@ -121,7 +121,27 @@
       align-items: center; justify-content: center;
       font-size: .75rem; font-weight: 700; color: var(--gold);
     }
+
+    /* ===== EXPORT MODAL ===== */
+    .export-opts { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin-bottom: 1.2rem; }
+    .export-opt {
+      border: 2px solid var(--border); border-radius: var(--radius-lg);
+      padding: 1rem; cursor: pointer; transition: .2s; text-align: center;
+      background: var(--bg3);
+    }
+    .export-opt:hover  { border-color: var(--gold); background: rgba(201,168,76,.06); }
+    .export-opt.chosen { border-color: var(--gold); background: rgba(201,168,76,.12); }
+    .export-opt .eo-icon  { font-size: 1.8rem; margin-bottom: .4rem; }
+    .export-opt .eo-title { font-weight: 600; font-size: .9rem; margin-bottom: .25rem; }
+    .export-opt .eo-desc  { font-size: .76rem; color: var(--muted); line-height: 1.4; }
+    .export-preview {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .75rem 1rem;
+      font-size: .82rem; color: var(--muted); margin-bottom: 1rem;
+    }
+    .export-preview strong { color: var(--cream); }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div id="sidebar-placeholder"></div>
@@ -542,10 +562,328 @@
     } catch(e) { showToast(e.message,'error'); }
   }
 
+
+  /* ═══════════════════════════════════════
+     XUẤT EXCEL
+  ═══════════════════════════════════════ */
+  let exportMode = 'day'; // 'day' | 'month' | 'teacher'
+
   function exportData() {
-    showToast('Tính năng xuất Excel đang phát triển!', 'info');
+    // Set giá trị tháng mặc định
+    const month = document.getElementById('monthInput')?.value || currentDate.substring(0,7);
+    document.getElementById('exportMonth').value = month;
+    exportMode = 'day';
+    document.querySelectorAll('.export-opt').forEach(el => {
+      el.classList.toggle('chosen', el.dataset.mode === 'day');
+    });
+    updateExportPreview();
+    document.getElementById('exportModal').style.display = 'flex';
+  }
+
+  function closeExportModal() {
+    document.getElementById('exportModal').style.display = 'none';
+  }
+
+  function selectExportMode(mode) {
+    exportMode = mode;
+    document.querySelectorAll('.export-opt').forEach(el => {
+      el.classList.toggle('chosen', el.dataset.mode === mode);
+    });
+    updateExportPreview();
+  }
+
+  function updateExportPreview() {
+    const el = document.getElementById('exportPreview');
+    const month = document.getElementById('exportMonth').value
+      || document.getElementById('monthInput')?.value
+      || currentDate.substring(0,7);
+
+    if (exportMode === 'day') {
+      const d = new Date(currentDate + 'T00:00:00').toLocaleDateString('vi-VN',
+        { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
+      el.innerHTML = `📄 Sẽ xuất: <strong>Bảng chấm công ngày ${d}</strong><br/>
+        <span>• ${allTeachers.length} giáo viên × ${allSlots.length} ca làm việc</span><br/>
+        <span>• File: <strong>ChamCong_${currentDate}.xlsx</strong></span>`;
+    } else if (exportMode === 'month') {
+      el.innerHTML = `📄 Sẽ xuất: <strong>Thống kê tổng hợp tháng ${month}</strong><br/>
+        <span>• Tổng hợp: có mặt, vắng, trễ, nghỉ phép, tỷ lệ %, lương</span><br/>
+        <span>• File: <strong>ThongKe_${month}.xlsx</strong></span>`;
+    } else {
+      el.innerHTML = `📄 Sẽ xuất: <strong>Chi tiết từng giáo viên tháng ${month}</strong><br/>
+        <span>• Mỗi giáo viên 1 sheet — ghi chi tiết từng ngày, từng ca</span><br/>
+        <span>• File: <strong>ChiTiet_GiaoVien_${month}.xlsx</strong></span>`;
+    }
+  }
+
+  async function doExport() {
+    const btn = document.getElementById('exportBtn');
+    btn.disabled = true; btn.textContent = '⏳ Đang xuất...';
+    try {
+      const month = document.getElementById('exportMonth').value
+        || document.getElementById('monthInput')?.value
+        || currentDate.substring(0,7);
+
+      if      (exportMode === 'day')     await exportDay();
+      else if (exportMode === 'month')   await exportMonthSummary(month);
+      else                               await exportMonthDetail(month);
+
+      closeExportModal();
+    } catch(e) {
+      showToast('Lỗi xuất Excel: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = '📥 Xuất file';
+    }
+  }
+
+  /* ──────────────────────────────
+     XUẤT 1: Bảng chấm công ngày
+  ────────────────────────────── */
+  async function exportDay() {
+    // Lấy lại dữ liệu mới nhất nếu cần
+    let data;
+    try { data = await api.get('/timekeeping/date/' + currentDate); }
+    catch(e) { throw e; }
+
+    const { teachers, slots, map } = data;
+    const STATUS_TEXT = { present:'Có mặt', absent:'Vắng', late:'Đi trễ', leave:'Nghỉ phép', '':'—' };
+
+    // Header row
+    const header = ['STT', 'Giáo viên', 'Nhạc cụ',
+      ...slots.map(s => s.slot_label),
+      'Có mặt', 'Đi trễ', 'Vắng', 'Nghỉ phép', 'Tổng ca có mặt'];
+
+    const rows = teachers.map((t, idx) => {
+      const counts = { present:0, absent:0, late:0, leave:0 };
+      const cells  = slots.map(s => {
+        const rec = map[`${t.teacher_id}-${s.slot_id}`];
+        const st  = rec?.status || '';
+        if (counts[st] !== undefined) counts[st]++;
+        return STATUS_TEXT[st] || '—';
+      });
+      return [
+        idx + 1,
+        t.full_name,
+        t.instrument || '',
+        ...cells,
+        counts.present, counts.late, counts.absent, counts.leave,
+        counts.present + counts.late
+      ];
+    });
+
+    const dateLabel = new Date(currentDate + 'T00:00:00')
+      .toLocaleDateString('vi-VN', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
+
+    const ws = XLSX.utils.aoa_to_sheet([
+      [`BẢNG CHẤM CÔNG GIÁO VIÊN — ${dateLabel.toUpperCase()}`],
+      [`Xuất lúc: ${new Date().toLocaleString('vi-VN')}`],
+      [],
+      header,
+      ...rows,
+      [],
+      ['Ghi chú: Có mặt = đúng giờ | Đi trễ = vào muộn | Nghỉ phép = phép có phép']
+    ]);
+
+    // Style độ rộng cột
+    ws['!cols'] = [
+      { wch: 5 }, { wch: 22 }, { wch: 14 },
+      ...slots.map(() => ({ wch: 16 })),
+      { wch: 10 }, { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 14 }
+    ];
+    // Merge tiêu đề
+    ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:header.length-1} }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Chấm công');
+    XLSX.writeFile(wb, `ChamCong_${currentDate}.xlsx`);
+    showToast('✅ Xuất Excel thành công!', 'success');
+  }
+
+  /* ──────────────────────────────
+     XUẤT 2: Thống kê tháng (1 sheet tổng hợp)
+  ────────────────────────────── */
+  async function exportMonthSummary(month) {
+    const data = await api.get('/timekeeping/monthly/' + month);
+    if (!data.length) { showToast('Không có dữ liệu tháng này!', 'info'); return; }
+
+    const [y, m] = month.split('-');
+    const monthLabel = `Tháng ${m}/${y}`;
+
+    const header = [
+      'STT', 'Giáo viên', 'Nhạc cụ',
+      'Có mặt', 'Đi trễ', 'Vắng', 'Nghỉ phép',
+      'Tổng ca', 'Tỷ lệ (%)',
+      'Loại lương', 'Đơn giá', 'Tổng lương (VNĐ)'
+    ];
+
+    const rows = data.map((t, idx) => {
+      const present = t.present_slots || 0;
+      const late    = t.late_slots    || 0;
+      const absent  = t.absent_slots  || 0;
+      const leave   = t.leave_slots   || 0;
+      const total   = t.total_slots   || 0;
+      const pct     = total ? +((present / total) * 100).toFixed(1) : 0;
+      const salary  = t.salary_type === 'per_session'
+        ? present * (t.salary || 0)
+        : (t.salary || 0);
+      return [
+        idx + 1, t.full_name, t.instrument || '',
+        present, late, absent, leave,
+        total, pct,
+        t.salary_type === 'per_session' ? 'Theo buổi' : 'Cố định tháng',
+        t.salary || 0,
+        salary
+      ];
+    });
+
+    // Tổng kết dòng cuối
+    const totals = ['', 'TỔNG CỘNG', '',
+      rows.reduce((s,r)=>s+r[3],0),
+      rows.reduce((s,r)=>s+r[4],0),
+      rows.reduce((s,r)=>s+r[5],0),
+      rows.reduce((s,r)=>s+r[6],0),
+      rows.reduce((s,r)=>s+r[7],0),
+      '', '', '',
+      rows.reduce((s,r)=>s+r[11],0)
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet([
+      [`BẢNG THỐNG KÊ CHẤM CÔNG GIÁO VIÊN — ${monthLabel.toUpperCase()}`],
+      [`Xuất lúc: ${new Date().toLocaleString('vi-VN')}`],
+      [],
+      header,
+      ...rows,
+      [],
+      totals
+    ]);
+
+    ws['!cols'] = [
+      {wch:5},{wch:22},{wch:14},
+      {wch:10},{wch:10},{wch:8},{wch:12},{wch:10},{wch:11},
+      {wch:16},{wch:12},{wch:18}
+    ];
+    ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:header.length-1} }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, monthLabel);
+    XLSX.writeFile(wb, `ThongKe_${month}.xlsx`);
+    showToast('✅ Xuất Excel thành công!', 'success');
+  }
+
+  /* ──────────────────────────────
+     XUẤT 3: Chi tiết từng GV (mỗi GV 1 sheet)
+  ────────────────────────────── */
+  async function exportMonthDetail(month) {
+    // Lấy tổng quan để có danh sách giáo viên
+    const overview = await api.get('/timekeeping/monthly/' + month);
+    if (!overview.length) { showToast('Không có dữ liệu tháng này!', 'info'); return; }
+
+    const [y, m] = month.split('-');
+    const monthLabel = `Tháng ${m}/${y}`;
+    const wb = XLSX.utils.book_new();
+
+    showToast('Đang tải dữ liệu chi tiết...', 'info');
+
+    for (const t of overview) {
+      const detail = await api.get(`/timekeeping/teacher/${t.teacher_id}/${month}`);
+      const { records, summary } = detail;
+
+      // Group by date
+      const byDate = {};
+      records.forEach(r => {
+        const d = r.work_date.split('T')[0];
+        if (!byDate[d]) byDate[d] = [];
+        byDate[d].push(r);
+      });
+
+      const header = ['Ngày', 'Thứ', 'Ca làm', 'Trạng thái'];
+      const detailRows = [];
+      Object.entries(byDate).sort().forEach(([date, recs]) => {
+        const jsDate = new Date(date + 'T00:00:00');
+        const thuMap = ['CN','T2','T3','T4','T5','T6','T7'];
+        const thu = thuMap[jsDate.getDay()];
+        const dateStr = jsDate.toLocaleDateString('vi-VN');
+        recs.forEach((r, i) => {
+          detailRows.push([
+            i === 0 ? dateStr : '',
+            i === 0 ? thu : '',
+            r.slot_label,
+            { present:'Có mặt', absent:'Vắng', late:'Đi trễ', leave:'Nghỉ phép' }[r.status] || r.status
+          ]);
+        });
+      });
+
+      const salary = t.salary_type === 'per_session'
+        ? summary.present * (t.salary || 0)
+        : (t.salary || 0);
+
+      const ws = XLSX.utils.aoa_to_sheet([
+        [`${t.full_name.toUpperCase()} — ${monthLabel}`],
+        [`Nhạc cụ: ${t.instrument||'—'}  |  Loại lương: ${t.salary_type==='per_session'?'Theo buổi':'Cố định'}`],
+        [],
+        ['TỔNG KẾT', 'Có mặt', 'Đi trễ', 'Vắng', 'Nghỉ phép', '', 'LƯƠNG DỰ TÍNH'],
+        ['', summary.present, summary.late, summary.absent, summary.leave, '', salary],
+        [],
+        header,
+        ...detailRows
+      ]);
+
+      ws['!cols'] = [{wch:14},{wch:6},{wch:22},{wch:14}];
+      ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:3} }];
+
+      // Tên sheet tối đa 31 ký tự, bỏ ký tự đặc biệt
+      const sheetName = t.full_name.replace(/[\\\/\?\*\[\]:]/g,'').substring(0, 28);
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    }
+
+    XLSX.writeFile(wb, `ChiTiet_GiaoVien_${month}.xlsx`);
+    showToast(`✅ Xuất ${overview.length} sheet giáo viên thành công!`, 'success');
   }
 </script>
+
+<!-- MODAL XUẤT EXCEL -->
+<div class="modal-overlay" id="exportModal" style="display:none">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h3>📥 Xuất Excel chấm công</h3>
+      <button class="modal-close" onclick="closeExportModal()">✕</button>
+    </div>
+
+    <!-- Chọn loại xuất -->
+    <div class="export-opts">
+      <div class="export-opt chosen" data-mode="day" onclick="selectExportMode('day')">
+        <div class="eo-icon">📅</div>
+        <div class="eo-title">Theo ngày</div>
+        <div class="eo-desc">Xuất bảng chấm công của <strong>ngày đang xem</strong> — tất cả giáo viên × tất cả ca</div>
+      </div>
+      <div class="export-opt" data-mode="month" onclick="selectExportMode('month')">
+        <div class="eo-icon">📊</div>
+        <div class="eo-title">Tổng hợp tháng</div>
+        <div class="eo-desc">Thống kê tháng: số ca, tỷ lệ %, <strong>tính lương tự động</strong> cho từng GV</div>
+      </div>
+      <div class="export-opt" data-mode="teacher" onclick="selectExportMode('teacher')">
+        <div class="eo-icon">👨‍🏫</div>
+        <div class="eo-title">Chi tiết GV (tháng)</div>
+        <div class="eo-desc">Mỗi giáo viên <strong>1 sheet riêng</strong> — đầy đủ từng ngày, từng ca trong tháng</div>
+      </div>
+    </div>
+
+    <!-- Chọn tháng (hiện khi mode = month / teacher) -->
+    <div id="exportMonthPicker" style="margin-bottom:.9rem">
+      <label class="form-label">Chọn tháng xuất</label>
+      <input type="month" id="exportMonth" class="form-input"
+             style="max-width:200px"
+             oninput="updateExportPreview()"/>
+    </div>
+
+    <!-- Preview -->
+    <div class="export-preview" id="exportPreview">—</div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeExportModal()">Hủy</button>
+      <button class="btn btn-primary" id="exportBtn" onclick="doExport()">📥 Xuất file</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL CHI TIẾT -->
 <div class="modal-overlay" id="detailModal" style="display:none">

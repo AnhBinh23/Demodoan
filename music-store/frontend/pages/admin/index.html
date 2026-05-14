@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="admin.css"/>
 
   <style>
+    html, body { overflow-x: hidden; }
+
     /* Stats: 3 cột × 2 hàng = 6 cards đầy màn hình */
     #statsGrid {
       grid-template-columns: repeat(3, 1fr) !important;
@@ -22,8 +24,8 @@
     .dashboard-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 1.5rem;
-      margin-top: 1.5rem;
+      gap: 1rem;
+      margin-top: 1rem;
     }
     @media (max-width: 1200px) {
       #statsGrid { grid-template-columns: repeat(3, 1fr) !important; }
