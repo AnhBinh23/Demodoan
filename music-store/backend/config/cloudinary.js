@@ -50,7 +50,10 @@ const sheetFileStorage = new CloudinaryStorage({
 });
 
 module.exports = {
-    uploadProductImage:  multer({ storage: productStorage  }).single('image'),
+    uploadProductImage: multer({ storage: productStorage }).fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'thumb_images', maxCount: 4 },
+]),
     uploadCategoryImage: multer({ storage: categoryStorage }).single('image'),
     uploadSheetThumb:    multer({ storage: sheetThumbStorage }).single('thumbnail'),
     uploadSheetFile:     multer({ storage: sheetFileStorage  }).single('sheet_file'),
