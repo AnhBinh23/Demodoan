@@ -8,16 +8,32 @@
   <link rel="stylesheet" href="admin.css"/>
 
   <style>
-    .dashboard-grid{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:1.5rem;
+    /* Stats: 3 cột × 2 hàng = 6 cards đầy màn hình */
+    #statsGrid {
+      grid-template-columns: repeat(3, 1fr) !important;
     }
-
-    @media (max-width: 900px){
-      .dashboard-grid{
-        grid-template-columns:1fr;
-      }
+    .stat-card {
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+    @media (max-width: 1200px) {
+      #statsGrid { grid-template-columns: repeat(3, 1fr) !important; }
+    }
+    @media (max-width: 900px) {
+      #statsGrid { grid-template-columns: repeat(2, 1fr) !important; }
+      .dashboard-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      #statsGrid { grid-template-columns: 1fr 1fr !important; }
     }
   </style>
 </head>
@@ -36,7 +52,7 @@
   <!-- STATS -->
   <div class="stats-grid" id="statsGrid">
 
-    <div class="stat-card" id="cardProducts">
+    <div class="stat-card" id="cardProducts" onclick="location.href='products.html'" style="cursor:pointer">
       <div class="stat-icon" style="background:rgba(201,168,76,0.1)">📦</div>
       <div class="stat-info">
         <div class="value" id="statProducts">...</div>
@@ -44,7 +60,7 @@
       </div>
     </div>
 
-    <div class="stat-card" id="cardOrders">
+    <div class="stat-card" id="cardOrders" onclick="location.href='orders.html'" style="cursor:pointer">
       <div class="stat-icon" style="background:rgba(76,175,128,0.1)">🛍️</div>
       <div class="stat-info">
         <div class="value" id="statOrders">...</div>
@@ -52,7 +68,7 @@
       </div>
     </div>
 
-    <div class="stat-card" id="cardUsers">
+    <div class="stat-card" id="cardUsers" onclick="location.href='users.html'" style="cursor:pointer">
       <div class="stat-icon" style="background:rgba(100,149,237,0.1)">👥</div>
       <div class="stat-info">
         <div class="value" id="statUsers">...</div>
@@ -60,7 +76,7 @@
       </div>
     </div>
 
-    <div class="stat-card" id="cardRevenue">
+    <div class="stat-card" id="cardRevenue" onclick="location.href='orders.html'" style="cursor:pointer">
       <div class="stat-icon" style="background:rgba(186,85,211,0.1)">💰</div>
       <div class="stat-info">
         <div class="value" id="statRevenue">...</div>

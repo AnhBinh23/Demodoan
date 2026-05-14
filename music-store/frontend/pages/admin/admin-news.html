@@ -183,10 +183,16 @@
         <!-- Ảnh bìa -->
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem">
           <p style="font-size:.85rem;font-weight:600;margin-bottom:.8rem;color:var(--cream)">🖼️ Ảnh bìa</p>
-          <input type="text" class="form-input" id="fThumbnail"
-                 placeholder="https://... hoặc /images/..."
-                 style="font-size:.8rem;margin-bottom:.6rem"
-                 oninput="previewThumb(this.value)"/>
+          <div style="display:flex;gap:.5rem;margin-bottom:.5rem">
+            <input type="text" class="form-input" id="fThumbnail"
+                   placeholder="https://... hoặc chọn ảnh từ máy"
+                   style="font-size:.8rem;flex:1"
+                   oninput="previewThumb(this.value)"/>
+            <label style="flex-shrink:0;cursor:pointer" class="btn btn-outline btn-sm" title="Upload ảnh từ máy">
+              📷
+              <input type="file" id="fThumbFile" accept="image/*" style="display:none" onchange="uploadNewsThumb(this)"/>
+            </label>
+          </div>
           <div id="thumbPreview" style="display:none">
             <img id="thumbImg" style="width:100%;border-radius:var(--radius);aspect-ratio:16/9;object-fit:cover" alt=""/>
           </div>
@@ -436,6 +442,27 @@
       await api.delete('/news/'+id);
       showToast('Đã xóa!','success'); await loadNews(currentPage);
     } catch(e) { showToast(e.message,'error'); }
+  }
+
+  async function uploadNewsThumb(input) {
+    if (!input.files?.[0]) return;
+    const btn = input.previousElementSibling || input.parentElement;
+    try {
+      const fd = new FormData();
+      fd.append('image', input.files[0]);
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/news/upload-image', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: fd
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      document.getElementById('fThumbnail').value = data.url;
+      previewThumb(data.url);
+      showToast('Upload ảnh thành công! 🖼️', 'success');
+    } catch(e) { showToast('Upload thất bại: ' + e.message, 'error'); }
+    input.value = '';
   }
 
   loadNews();

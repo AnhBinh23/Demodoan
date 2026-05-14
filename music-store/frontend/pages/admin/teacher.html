@@ -331,6 +331,7 @@
     fd.append('email',            document.getElementById('fEmail').value.trim());
     fd.append('phone',            document.getElementById('fPhone').value.trim());
     fd.append('specialty',        spec);
+    fd.append('instrument_id',    document.getElementById('fInstrument')?.value || '');
     fd.append('degree',           document.getElementById('fDegree').value.trim());
     fd.append('experience_years', document.getElementById('fExp').value || 0);
     fd.append('salary',           document.getElementById('fSalary').value || 0);
@@ -400,7 +401,7 @@
       panel.innerHTML = `
         <div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap">
           <div style="text-align:center;flex-shrink:0">
-            <img src="${t.avatar ? 'http://localhost:5000'+t.avatar : ''}" onerror="this.src=''" alt=""
+            <img src="${t.avatar || ''}" onerror="this.style.display='none'" alt=""
               style="width:90px;height:90px;border-radius:50%;object-fit:cover;background:var(--surface2);border:2px solid var(--border)"/>
             <div style="margin-top:.5rem;font-weight:600">${t.full_name}</div>
             <span class="badge ${t.is_active?'badge-active':'badge-inactive'}" style="margin-top:.3rem">${t.is_active?'Đang làm':'Đã nghỉ'}</span>

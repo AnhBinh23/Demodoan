@@ -1,16 +1,5 @@
 const db         = require('../config/db');
-const cloudinary = require('cloudinary').v2;
 require('dotenv').config();
-
-const uploadToCloudinary = (buffer, folder) => {
-    return new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-            { folder, resource_type: 'image' },
-            (error, result) => { if (error) reject(error); else resolve(result); }
-        );
-        stream.end(buffer);
-    });
-};
 
 const getAllProducts = async (req, res) => {
     try {
@@ -50,10 +39,9 @@ const createProduct = async (req, res) => {
         const { category_id, product_name, description, price, discount, stock, brand } = req.body;
         let image_url = null;
 
-        // Upload ảnh chính lên Cloudinary
-        if (req.files && req.files['image'] && req.files['image'][0]) {
-            const result = await uploadToCloudinary(req.files['image'][0].buffer, 'ascent-music/products');
-            image_url = result.secure_url;
+        // Upload ảnh chính (CloudinaryStorage xử lý qua multer middleware)
+        if (req.file) {
+            image_url = req.file.path || req.file.secure_url;
         }
 
         const [result] = await db.query(
@@ -61,14 +49,6 @@ const createProduct = async (req, res) => {
             [category_id, product_name, description, price, discount||0, stock||0, brand, image_url]
         );
         const product_id = result.insertId;
-
-        // Upload ảnh phụ
-        const thumbFiles = req.files && req.files['thumb_images'] ? req.files['thumb_images'] : [];
-        for (const file of thumbFiles) {
-            const thumbResult = await uploadToCloudinary(file.buffer, 'ascent-music/products/thumbs');
-            await db.query('INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, 0)',
-                [product_id, thumbResult.secure_url]);
-        }
 
         res.status(201).json({ message: 'Thêm sản phẩm thành công!', product_id });
     } catch(err) { res.status(500).json({ message: 'Lỗi server!', error: err.message }); }
@@ -81,10 +61,9 @@ const updateProduct = async (req, res) => {
         const { category_id, product_name, description, price, discount, stock, brand, is_active } = req.body;
 
         let image_url = null;
-        // Upload ảnh mới nếu có
-        if (req.files && req.files['image'] && req.files['image'][0]) {
-            const result = await uploadToCloudinary(req.files['image'][0].buffer, 'ascent-music/products');
-            image_url = result.secure_url;
+        // Upload ảnh mới nếu có (CloudinaryStorage xử lý qua multer)
+        if (req.file) {
+            image_url = req.file.path || req.file.secure_url;
         }
 
         const sets   = ['category_id=?','product_name=?','description=?','price=?','discount=?','stock=?','brand=?','is_active=?'];
@@ -94,14 +73,6 @@ const updateProduct = async (req, res) => {
         params.push(id);
 
         await db.query(`UPDATE products SET ${sets.join(',')} WHERE product_id=?`, params);
-
-        // Upload thêm ảnh phụ mới nếu có
-        const thumbFiles = req.files && req.files['thumb_images'] ? req.files['thumb_images'] : [];
-        for (const file of thumbFiles) {
-            const thumbResult = await uploadToCloudinary(file.buffer, 'ascent-music/products/thumbs');
-            await db.query('INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, 0)',
-                [id, thumbResult.secure_url]);
-        }
 
         res.json({ message: 'Cập nhật sản phẩm thành công!' });
     } catch(err) { res.status(500).json({ message: 'Lỗi server!', error: err.message }); }

@@ -14,7 +14,7 @@ const toSlug = (str) => str.toLowerCase()
 const getAll = async (req, res) => {
     try {
         const { page=1, limit=9, tag, search } = req.query;
-        const offset = (page-1)*limit;
+        const offset = (parseInt(page)-1)*parseInt(limit);
         let where = 'WHERE p.is_published=1';
         const params = [];
         if (tag)    { where += ' AND p.tag=?'; params.push(tag); }
@@ -30,10 +30,10 @@ const getAll = async (req, res) => {
              ${where}
              ORDER BY p.is_featured DESC, p.published_at DESC
              LIMIT ? OFFSET ?`,
-            [...params, parseInt(limit), parseInt(offset)]
+            [...params, parseInt(limit)||9, parseInt(offset)||0]
         );
         res.json({ posts, total, page: parseInt(page), total_pages: Math.ceil(total/limit) });
-    } catch(e) { res.status(500).json({ message:'Lỗi server!', error:e.message }); }
+    } catch(e) { console.error('news getAll error:', e); res.status(500).json({ message:'Lỗi server!', error:e.message, sqlMessage: e.sqlMessage||'' }); }
 };
 
 const getBySlug = async (req, res) => {
@@ -67,7 +67,7 @@ const getTags = async (req, res) => {
 const adminGetAll = async (req, res) => {
     try {
         const { page=1, limit=20, search } = req.query;
-        const offset = (page-1)*limit;
+        const offset = (parseInt(page)-1)*parseInt(limit);
         let where = 'WHERE 1=1';
         const params = [];
         if (search) { where += ' AND p.title LIKE ?'; params.push('%'+search+'%'); }
@@ -79,7 +79,7 @@ const adminGetAll = async (req, res) => {
                     u.full_name AS author_name
              FROM news_posts p LEFT JOIN users u ON p.author_id=u.user_id
              ${where} ORDER BY p.created_at DESC LIMIT ? OFFSET ?`,
-            [...params, parseInt(limit), parseInt(offset)]
+            [...params, parseInt(limit)||9, parseInt(offset)||0]
         );
         res.json({ posts, total, page: parseInt(page), total_pages: Math.ceil(total/limit) });
     } catch(e) { res.status(500).json({ message:'Lỗi server!', error:e.message }); }
@@ -151,4 +151,21 @@ const togglePublish = async (req, res) => {
     } catch(e) { res.status(500).json({ message:'Lỗi server!', error:e.message }); }
 };
 
-module.exports = { getAll, getBySlug, getTags, adminGetAll, adminGetById, create, update, remove, togglePublish };
+// Upload ảnh từ máy lên Cloudinary (dùng cho thumbnail bài viết)
+const uploadImage = async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ message: 'Chưa chọn ảnh!' });
+        const cloudinary = require('../config/cloudinary').cloudinary;
+        const result = await new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+                { folder: 'ascent-music/news', resource_type: 'image',
+                  transformation: [{ width: 1200, height: 630, crop: 'fill' }] },
+                (err, r) => err ? reject(err) : resolve(r)
+            );
+            stream.end(req.file.buffer);
+        });
+        res.json({ url: result.secure_url });
+    } catch(e) { res.status(500).json({ message: 'Upload thất bại!', error: e.message }); }
+};
+
+module.exports = { getAll, getBySlug, getTags, adminGetAll, adminGetById, create, update, remove, togglePublish, uploadImage };

@@ -1,23 +1,13 @@
 const express  = require('express');
 const router   = express.Router();
 const multer   = require('multer');
-const path     = require('path');
-const fs       = require('fs');
 const { verifyAdmin, verifySuperAdmin, verifyStaff, verifyPermission } = require('../middleware/auth');
 const T = require('../controllers/teacherController');
 const S = require('../controllers/studentController');
 const C = require('../controllers/centerController');
 
-// Upload ảnh giáo viên
-const teacherStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const dir = path.join(__dirname, '../public/images/teachers');
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        cb(null, dir);
-    },
-    filename: (req, file, cb) => cb(null, 'teacher_' + Date.now() + path.extname(file.originalname))
-});
-const uploadTeacher = multer({ storage: teacherStorage, limits: { fileSize: 5*1024*1024 } }).single('avatar');
+// Upload avatar giáo viên qua memory (controller tự upload Cloudinary)
+const uploadTeacher = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5*1024*1024 } }).single('avatar');
 
 // INSTRUMENTS & COURSE TYPES
 router.get('/instruments',   verifyStaff, C.getInstruments);

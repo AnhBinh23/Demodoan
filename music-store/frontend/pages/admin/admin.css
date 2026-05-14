@@ -63,13 +63,13 @@ button { cursor: pointer; font-family: inherit; }
 .sidebar-logout:hover { color: var(--red); }
 
 /* MAIN */
-.admin-main { margin-left: var(--sidebar-w); flex: 1; padding: 2rem; }
+.admin-main { margin-left: var(--sidebar-w); flex: 1; padding: 2rem 2.5rem; min-height: 100vh; width: calc(100% - var(--sidebar-w)); }
 .page-header { margin-bottom: 2rem; }
 .page-header h1 { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; }
 .page-header p { font-size: 0.88rem; color: var(--muted); margin-top: 0.2rem; }
 
 /* STATS CARDS */
-.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
 .stat-card {
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: var(--radius-lg); padding: 1.3rem 1.5rem;
