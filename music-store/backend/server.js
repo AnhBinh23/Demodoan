@@ -10,7 +10,15 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/images', express.static(path.join(__dirname, 'public/images')));
 app.use('/sheets', express.static(path.join(__dirname, 'public/sheets')));
-app.use(express.static(path.join(__dirname, '../frontend')));
+// Hỗ trợ cả local và Railway
+const fs2 = require('fs');
+const frontendPaths = [
+  path.join(__dirname, '../frontend'),
+  path.join(__dirname, '../../frontend'),
+];
+const frontendPath = frontendPaths.find(p => fs2.existsSync(p)) || path.join(__dirname, '../frontend');
+console.log('📁 Frontend path:', frontendPath);
+app.use(express.static(frontendPath));
 
 app.use('/api/auth',        require('./routes/auth'));
 app.use('/api/categories',  require('./routes/categories'));
@@ -35,4 +43,3 @@ app.listen(PORT, () => {
     console.log(`🚀 Server đang chạy tại: http://localhost:${PORT}`);
     console.log(`📦 API endpoint:          http://localhost:${PORT}/api`);
 });
-
