@@ -1,5 +1,4 @@
 const db = require('../config/db');
-const bcrypt = require('bcryptjs');
 const toSlug = (str) => str.toLowerCase()
     .replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g,'a')
     .replace(/[èéẹẻẽêềếệểễ]/g,'e')
