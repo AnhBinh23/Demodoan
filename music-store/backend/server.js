@@ -1,48 +1,78 @@
 const express = require('express');
-const cors    = require('cors');
-const path    = require('path');
+const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
+
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Static folders
 app.use('/images', express.static(path.join(__dirname, 'public/images')));
 app.use('/sheets', express.static(path.join(__dirname, 'public/sheets')));
-// Serve frontend - thử nhiều path
+
+// ===============================
+// FRONTEND PATH
+// ===============================
 const possiblePaths = [
-  path.join(__dirname, '../frontend'),      // local & music-store root
-  path.join(__dirname, 'frontend'),         // nếu copy vào backend
-  '/app/frontend',                          // Railway absolute path
-  path.join(process.cwd(), 'frontend'),     // từ working dir
+    path.join(__dirname, '../frontend'),
+    path.join(__dirname, 'frontend'),
+    '/app/frontend',
+    path.join(process.cwd(), 'frontend')
 ];
+
+// Tìm frontend tồn tại
 const frontendDir = possiblePaths.find(p => fs.existsSync(p));
-console.log('📁 Frontend found at:', frontendDir || 'NOT FOUND');
+
+console.log('📁 Frontend:', frontendDir || 'NOT FOUND');
 console.log('📁 CWD:', process.cwd());
 console.log('📁 __dirname:', __dirname);
-if (frontendDir) app.use(express.static(frontendDir));
 
-app.use('/api/auth',        require('./routes/auth'));
-app.use('/api/categories',  require('./routes/categories'));
-app.use('/api/products',    require('./routes/products'));
-app.use('/api/cart',        require('./routes/cart'));
-app.use('/api/orders',      require('./routes/orders'));
-app.use('/api/users',       require('./routes/users'));
-app.use('/api/sheets',      require('./routes/sheets'));
-app.use('/api/reviews',     require('./routes/reviews'));
-app.use('/api/stats',       require('./routes/stats'));
-app.use('/api/news',        require('./routes/news'));
-app.use('/api/center',      require('./routes/center'));
+// Serve frontend
+if (frontendDir) {
+    app.use(express.static(frontendDir));
+
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(frontendDir, 'index.html'));
+    });
+}
+
+// ===============================
+// API ROUTES
+// ===============================
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/categories', require('./routes/categories'));
+app.use('/api/products', require('./routes/products'));
+app.use('/api/cart', require('./routes/cart'));
+app.use('/api/orders', require('./routes/orders'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/sheets', require('./routes/sheets'));
+app.use('/api/reviews', require('./routes/reviews'));
+app.use('/api/stats', require('./routes/stats'));
+app.use('/api/news', require('./routes/news'));
+app.use('/api/center', require('./routes/center'));
 app.use('/api/timekeeping', require('./routes/timekeeping'));
-app.use('/api/email',       require('./routes/email'));
-app.use('/api/excel',       require('./routes/excel'));
+app.use('/api/email', require('./routes/email'));
+app.use('/api/excel', require('./routes/excel'));
 
+// ===============================
+// TEST API
+// ===============================
+app.get('/api', (req, res) => {
+    res.json({
+        message: '🎵 Ascent-Music API đang chạy!'
+    });
+});
 
-app.get('/api', (req, res) => res.json({ message: '🎵 Ascent-Music API đang chạy!' }));
-
+// ===============================
+// START SERVER
+// ===============================
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => {
-    console.log(`🚀 Server đang chạy tại: http://localhost:${PORT}`);
-    console.log(`📦 API endpoint:          http://localhost:${PORT}/api`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });
