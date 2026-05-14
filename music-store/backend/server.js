@@ -10,7 +10,20 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/images', express.static(path.join(__dirname, 'public/images')));
 app.use('/sheets', express.static(path.join(__dirname, 'public/sheets')));
-app.use(express.static(path.join(__dirname, '../frontend')));
+// Debug path
+const frontendDir = path.join(__dirname, '../frontend');
+console.log('📁 Frontend path:', frontendDir);
+console.log('📁 Frontend exists:', fs.existsSync(frontendDir));
+app.use(express.static(frontendDir));
+
+// Fallback: nếu không tìm thấy file, trả về thông báo
+app.get('/pages/*', (req, res) => {
+  const filePath = path.join(frontendDir, req.path);
+  console.log('Requested:', filePath, 'Exists:', fs.existsSync(filePath));
+  if (!fs.existsSync(frontendDir)) {
+    res.status(404).send('Frontend directory not found: ' + frontendDir);
+  }
+});
 
 app.use('/api/auth',        require('./routes/auth'));
 app.use('/api/categories',  require('./routes/categories'));
