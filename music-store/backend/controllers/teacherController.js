@@ -13,11 +13,10 @@ const uploadAvatar = (buffer) => new Promise((resolve, reject) => {
 const getAll = async (req, res) => {
     try {
         const [rows] = await db.query(`
-            SELECT t.*, i.name AS instrument, i.icon,
+            SELECT t.*,
                 COUNT(DISTINCT c.class_id) AS total_classes,
                 COUNT(DISTINCT CASE WHEN c.status='ongoing' THEN c.class_id END) AS active_classes
             FROM teachers t
-            LEFT JOIN instruments i ON t.instrument_id = i.instrument_id
             LEFT JOIN classes c ON t.teacher_id = c.teacher_id
             GROUP BY t.teacher_id ORDER BY t.created_at DESC`);
         res.json(rows);
@@ -39,7 +38,7 @@ const getById = async (req, res) => {
 
 const create = async (req, res) => {
     try {
-        const { full_name, email, phone, instrument_id, specialty, degree,
+        const { full_name, email, phone, specialty, degree,
                 experience_years, bio, salary, salary_type, join_date } = req.body;
         if (!full_name || !specialty)
             return res.status(400).json({ message:'Thiếu thông tin bắt buộc!' });
@@ -52,10 +51,10 @@ const create = async (req, res) => {
 
         const [result] = await db.query(
             `INSERT INTO teachers
-                (full_name,email,phone,instrument_id,specialty,degree,
+                (full_name,email,phone,specialty,degree,
                  experience_years,bio,salary,salary_type,join_date,avatar)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-            [full_name, email||null, phone||null, instrument_id||null, specialty,
+             VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+            [full_name, email||null, phone||null, specialty,
              degree||null, experience_years||0, bio||null,
              salary||0, salary_type||'per_session', join_date||null, avatar]
         );
@@ -69,7 +68,7 @@ const create = async (req, res) => {
 const update = async (req, res) => {
     try {
         const { id } = req.params;
-        const fields = ['full_name','email','phone','instrument_id','specialty',
+        const fields = ['full_name','email','phone','specialty',
                         'degree','experience_years','bio','salary','salary_type','join_date','is_active'];
         const sets = [], vals = [];
         fields.forEach(f => { if (req.body[f] !== undefined) { sets.push(`${f}=?`); vals.push(req.body[f]); } });
