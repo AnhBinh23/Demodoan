@@ -40,8 +40,8 @@ const createProduct = async (req, res) => {
         let image_url = null;
 
         // Upload ảnh chính (CloudinaryStorage xử lý qua multer middleware)
-        if (req.file) {
-            image_url = req.file.path || req.file.secure_url;
+        if (req.files && req.files['image'] && req.files['image'][0]) {
+            image_url = req.files['image'][0].path || req.files['image'][0].secure_url;
         }
 
         const [result] = await db.query(
@@ -62,8 +62,8 @@ const updateProduct = async (req, res) => {
 
         let image_url = null;
         // Upload ảnh mới nếu có (CloudinaryStorage xử lý qua multer)
-        if (req.file) {
-            image_url = req.file.path || req.file.secure_url;
+        if (req.files && req.files['image'] && req.files['image'][0]) {
+            image_url = req.files['image'][0].path || req.files['image'][0].secure_url;
         }
 
         const sets   = ['category_id=?','product_name=?','description=?','price=?','discount=?','stock=?','brand=?','is_active=?'];
