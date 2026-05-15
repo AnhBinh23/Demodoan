@@ -9,6 +9,7 @@ const pool = mysql.createPool({
     user:     process.env.DB_USER     || process.env.MYSQLUSER,
     password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD,
     database: process.env.DB_NAME     || process.env.MYSQLDATABASE,
+    charset:  'utf8mb4',
     waitForConnections: true,
     connectionLimit: 10,
     ssl: isRailway ? { rejectUnauthorized: false } : false,
