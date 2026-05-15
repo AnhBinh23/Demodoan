@@ -74,6 +74,33 @@
       background: var(--bg3); border: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: all 0.2s;
     }
     .toggle-btn.active { background: var(--gold); border-color: var(--gold); color: var(--bg); }
+
+    /* PDF VIEWER MODAL */
+    .viewer-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999; padding: 1rem;
+    }
+    .viewer-modal {
+      background: var(--bg2); border-radius: var(--radius-lg);
+      width: 95vw; max-width: 1000px; height: 90vh;
+      display: flex; flex-direction: column; overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .viewer-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.2rem; border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .viewer-header h3 { margin: 0; font-size: 1rem; }
+    .viewer-close {
+      background: none; border: none; color: var(--muted);
+      font-size: 1.4rem; cursor: pointer; line-height: 1;
+      padding: 0.2rem 0.5rem; border-radius: var(--radius);
+    }
+    .viewer-close:hover { background: var(--bg3); color: var(--text); }
+    .viewer-iframe { flex: 1; border: none; background: #fff; }
+    .viewer-img { flex: 1; object-fit: contain; padding: 1rem; }
   </style>
 </head>
 <body>
@@ -86,11 +113,10 @@
     <button class="btn btn-primary" onclick="openModal()">+ Upload bản nhạc</button>
   </div>
 
-  <!-- VIEW TOGGLE + FILTER -->
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
     <div class="view-toggle">
       <button class="toggle-btn active" id="viewCard" onclick="setView('card')">⊞ Thẻ</button>
-      <button class="toggle-btn"        id="viewTable" onclick="setView('table')">☰ Bảng</button>
+      <button class="toggle-btn" id="viewTable" onclick="setView('table')">☰ Bảng</button>
     </div>
     <div style="display:flex;gap:0.8rem;flex-wrap:wrap">
       <div class="search-input" style="max-width:240px">
@@ -107,12 +133,10 @@
     </div>
   </div>
 
-  <!-- CARD VIEW -->
   <div class="sheet-cards-grid" id="cardView">
     <div class="loading" style="grid-column:1/-1"><div class="spinner"></div></div>
   </div>
 
-  <!-- TABLE VIEW -->
   <div class="admin-table-wrap" id="tableView" style="display:none">
     <table>
       <thead>
@@ -171,7 +195,6 @@
       <textarea class="form-textarea" id="fDesc" rows="2" placeholder="Mô tả bản nhạc này..."></textarea>
     </div>
 
-    <!-- FILE UPLOAD -->
     <div class="form-group" id="fileGroup">
       <label class="form-label" id="fileLabel">File bản nhạc * <span style="color:var(--muted);font-weight:400">(PDF hoặc ảnh JPG/PNG, tối đa 20MB)</span></label>
       <div id="currentFileInfo" style="display:none;padding:0.7rem 1rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:0.5rem;font-size:0.85rem">
@@ -210,6 +233,18 @@
         <span id="saveBtnText">⬆ Upload bản nhạc</span>
       </button>
     </div>
+  </div>
+</div>
+
+<!-- PDF / ẢNH VIEWER MODAL -->
+<div class="viewer-modal-overlay" id="viewerModal" style="display:none" onclick="handleViewerClick(event)">
+  <div class="viewer-modal">
+    <div class="viewer-header">
+      <h3 id="viewerTitle">Xem bản nhạc</h3>
+      <button class="viewer-close" onclick="closeViewer()">✕</button>
+    </div>
+    <iframe id="viewerFrame" class="viewer-iframe" src="" style="display:none"></iframe>
+    <img id="viewerImg" class="viewer-img" src="" alt="" style="display:none"/>
   </div>
 </div>
 
@@ -259,9 +294,9 @@
             ${s.composer ? `♩ ${s.composer}  ·  ` : ''}${diffLabels[s.difficulty]}  ·  👁 ${s.view_count}
           </div>
           <div class="sheet-admin-actions">
-            <a href="${s.file_type==='pdf' ? 'https://docs.google.com/viewer?url='+encodeURIComponent(s.file_url) : s.file_url}" target="_blank" class="btn btn-outline btn-sm" style="flex:1">👁 Xem</a>
+            <button class="btn btn-outline btn-sm" style="flex:1" onclick="viewSheet('${s.file_url}','${s.file_type}','${s.title.replace(/'/g,"\\'")}')">👁 Xem</button>
             <button class="btn btn-outline btn-sm" onclick="editSheet(${s.sheet_id})">✏️</button>
-            <button class="btn btn-danger btn-sm"  onclick="deleteSheet(${s.sheet_id},'${s.title.replace(/'/g,"\\'")}')">🗑</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteSheet(${s.sheet_id},'${s.title.replace(/'/g,"\\'")}')">🗑</button>
           </div>
         </div>
       </div>`).join('');
@@ -282,13 +317,41 @@
         <td style="color:var(--muted)">👁 ${s.view_count}</td>
         <td><span class="badge ${s.is_active?'badge-active':'badge-inactive'}">${s.is_active?'Hiện':'Ẩn'}</span></td>
         <td style="display:flex;gap:0.4rem">
-          <a href="${s.file_type==='pdf' ? 'https://docs.google.com/viewer?url='+encodeURIComponent(s.file_url) : s.file_url}" target="_blank" class="btn btn-outline btn-sm">👁</a>
+          <button class="btn btn-outline btn-sm" onclick="viewSheet('${s.file_url}','${s.file_type}','${s.title.replace(/'/g,"\\'")}')">👁</button>
           <button class="btn btn-outline btn-sm" onclick="editSheet(${s.sheet_id})">✏️</button>
-          <button class="btn btn-danger btn-sm"  onclick="deleteSheet(${s.sheet_id},'${s.title.replace(/'/g,"\\'")}')">🗑</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSheet(${s.sheet_id},'${s.title.replace(/'/g,"\\'")}')">🗑</button>
         </td>
       </tr>`).join('');
   }
 
+  // ===== VIEWER =====
+  function viewSheet(url, type, title) {
+    document.getElementById('viewerTitle').textContent = title || 'Xem bản nhạc';
+    const frame = document.getElementById('viewerFrame');
+    const img   = document.getElementById('viewerImg');
+    if (type === 'pdf') {
+      frame.src = 'https://docs.google.com/viewer?url=' + encodeURIComponent(url) + '&embedded=true';
+      frame.style.display = 'block';
+      img.style.display   = 'none';
+    } else {
+      img.src             = url;
+      img.style.display   = 'block';
+      frame.style.display = 'none';
+    }
+    document.getElementById('viewerModal').style.display = 'flex';
+  }
+
+  function closeViewer() {
+    document.getElementById('viewerFrame').src = '';
+    document.getElementById('viewerImg').src   = '';
+    document.getElementById('viewerModal').style.display = 'none';
+  }
+
+  function handleViewerClick(e) {
+    if (e.target === document.getElementById('viewerModal')) closeViewer();
+  }
+
+  // ===== VIEW TOGGLE =====
   function setView(view) {
     currentView = view;
     document.getElementById('cardView').style.display  = view==='card'  ? 'grid'  : 'none';
@@ -339,10 +402,9 @@
     document.getElementById('fInstrument').value   = s?.instrument || 'Piano';
     document.getElementById('fDifficulty').value   = s?.difficulty || 'beginner';
     document.getElementById('fDesc').value         = s?.description || '';
-    // Luôn hiện file group, khi sửa thì hiện info file cũ
     document.getElementById('fileGroup').style.display = 'block';
     document.getElementById('fileLabel').innerHTML = s
-      ? 'Thay file bản nhạc <span style="color:var(--muted);font-weight:400">(tùy chọn — để trống nếu không muốn thay)</span>'
+      ? 'Thay file bản nhạc <span style="color:var(--muted);font-weight:400">(tùy chọn)</span>'
       : 'File bản nhạc * <span style="color:var(--muted);font-weight:400">(PDF hoặc ảnh JPG/PNG, tối đa 20MB)</span>';
     const curInfo = document.getElementById('currentFileInfo');
     if (s && s.file_url) {
@@ -376,10 +438,9 @@
 
     try {
       if (id) {
-        const newFile = document.getElementById('fFile').files[0];
+        const newFile  = document.getElementById('fFile').files[0];
         const newThumb = document.getElementById('fThumb').files[0];
         if (newFile || newThumb) {
-          // Có file mới → dùng FormData
           const fd = new FormData();
           fd.append('title',       title);
           fd.append('composer',    document.getElementById('fComposer').value.trim());
@@ -395,7 +456,6 @@
           await api.putForm('/sheets/' + id, fd);
           document.getElementById('progressBar').style.width = '100%';
         } else {
-          // Không có file mới → gửi JSON bình thường
           await api.put('/sheets/' + id, {
             title, composer: document.getElementById('fComposer').value.trim(),
             instrument: document.getElementById('fInstrument').value,
@@ -408,7 +468,6 @@
       } else {
         const fileInput = document.getElementById('fFile');
         if (!fileInput.files[0]) { showToast('Vui lòng chọn file bản nhạc!', 'error'); return; }
-
         const formData = new FormData();
         formData.append('title',       title);
         formData.append('composer',    document.getElementById('fComposer').value.trim());
@@ -419,21 +478,15 @@
         formData.append('sheet_file',  fileInput.files[0]);
         const thumb = document.getElementById('fThumb');
         if (thumb.files[0]) formData.append('thumbnail', thumb.files[0]);
-
-        // Hiện progress
         document.getElementById('uploadProgress').style.display = 'block';
         document.getElementById('progressBar').style.width = '30%';
         document.getElementById('progressText').textContent = 'Đang tải file lên...';
-
         const data = await api.postForm('/sheets', formData);
-
         document.getElementById('progressBar').style.width = '100%';
         document.getElementById('progressText').textContent = 'Hoàn thành!';
-
         if (!data) throw new Error('Upload thất bại!');
         showToast('Upload bản nhạc thành công! 🎼', 'success');
       }
-
       closeModal();
       await loadSheets();
     } catch(e) {
@@ -456,5 +509,6 @@
 
   loadSheets();
 </script>
+
 </body>
 </html>
