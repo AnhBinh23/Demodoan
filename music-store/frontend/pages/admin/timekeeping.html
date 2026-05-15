@@ -317,7 +317,7 @@
     // Header hàng slot
     const headerCols = slots.map(s => `
       <th style="font-size:.72rem;min-width:58px">
-        ${s.slot_label.replace(' - ','<br/>')}
+        ${s.label.replace(' - ','<br/>')}
       </th>`).join('');
 
     // Hàng giáo viên
@@ -536,7 +536,7 @@
           return `<span style="font-size:.75rem;padding:.15rem .4rem;border-radius:4px;background:${
             r.status==='present'?'rgba(76,175,128,.15)':r.status==='absent'?'rgba(224,85,85,.15)':
             r.status==='late'?'rgba(255,165,0,.15)':'rgba(100,149,237,.15)'
-          };margin:.1rem">${info.icon} ${r.slot_label}</span>`;
+          };margin:.1rem">${info.icon} ${r.label}</span>`;
         }).join('');
         return `<tr>
           <td style="font-weight:500">${dayLabel}</td>
@@ -649,7 +649,7 @@
 
     // Header row
     const header = ['STT', 'Giáo viên', 'Nhạc cụ',
-      ...slots.map(s => s.slot_label),
+      ...slots.map(s => s.label),
       'Có mặt', 'Đi trễ', 'Vắng', 'Nghỉ phép', 'Tổng ca có mặt'];
 
     const rows = teachers.map((t, idx) => {
@@ -806,7 +806,7 @@
           detailRows.push([
             i === 0 ? dateStr : '',
             i === 0 ? thu : '',
-            r.slot_label,
+            r.label,
             { present:'Có mặt', absent:'Vắng', late:'Đi trễ', leave:'Nghỉ phép' }[r.status] || r.status
           ]);
         });
