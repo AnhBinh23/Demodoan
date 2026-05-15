@@ -24,20 +24,20 @@ router.get('/', getAllProducts);
 router.get('/:id', getProductById);
 
 // Thêm sản phẩm
-router.post(
-    '/',
-    verifyAdmin,
-    uploadProductImage,
-    createProduct
-);
+router.post('/', verifyAdmin, (req, res, next) => {
+    uploadProductImage(req, res, (err) => {
+        if (err) return res.status(500).json({ message: err.message });
+        next();
+    });
+}, createProduct);
 
 // Cập nhật sản phẩm
-router.put(
-    '/:id',
-    verifyAdmin,
-    uploadProductImage,
-    updateProduct
-);
+router.put('/:id', verifyAdmin, (req, res, next) => {
+    uploadProductImage(req, res, (err) => {
+        if (err) return res.status(500).json({ message: err.message });
+        next();
+    });
+}, updateProduct);
 
 // Xóa sản phẩm
 router.delete(
