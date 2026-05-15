@@ -431,7 +431,7 @@
 
   async function togglePost(id) {
     try {
-      await api.patch ? api.patch('/news/'+id+'/toggle') : fetch(`http://localhost:5000/api/news/${id}/toggle`,{method:'PATCH',headers:{Authorization:'Bearer '+localStorage.getItem('token')}});
+      await api.patch ? api.patch('/news/'+id+'/toggle') : fetch(`/api/news/${id}/toggle`,{method:'PATCH',headers:{Authorization:'Bearer '+localStorage.getItem('token')}});
       await loadNews(currentPage);
     } catch(e) { showToast(e.message,'error'); }
   }
@@ -451,7 +451,7 @@
       const fd = new FormData();
       fd.append('image', input.files[0]);
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/news/upload-image', {
+      const res = await fetch('/api/news/upload-image', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token },
         body: fd

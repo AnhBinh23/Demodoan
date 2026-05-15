@@ -490,7 +490,7 @@ async function saveTeacher() {
   btn.disabled = true; btn.textContent = 'Đang lưu...';
   try {
     const token = localStorage.getItem('token');
-    const url    = `http://localhost:5000/api/center/teachers${id ? '/' + id : ''}`;
+    const url    = `/api/center/teachers${id ? '/' + id : ''}`;
     const method = id ? 'PUT' : 'POST';
     const res    = await fetch(url, { method, headers: { Authorization: 'Bearer ' + token }, body: fd });
     const data   = await res.json();
