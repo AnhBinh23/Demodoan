@@ -154,7 +154,7 @@
       formData.append('description',   desc);
       if (file) formData.append('image', file);
 
-      const url    = id ? '/api/categories/' + id : 'http://localhost:5000/api/categories';
+      const url    = id ? '/api/categories/' + id : '/api/categories';
       const method = id ? 'PUT' : 'POST';
 
       const res  = await fetch(url, { method, headers: { 'Authorization': 'Bearer ' + token }, body: formData });
