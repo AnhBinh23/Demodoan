@@ -1,4 +1,5 @@
 const db = require('../config/db');
+
 const getInstruments = async (req, res) => {
     try {
         const [rows] = await db.query('SELECT * FROM instruments WHERE is_active=1 ORDER BY instrument_id');
@@ -13,34 +14,26 @@ const getCourseTypes = async (req, res) => {
     } catch(e) { res.status(500).json({ message: 'Lỗi server!', error: e.message }); }
 };
 
-// =============================================
-// COURSES
-// =============================================
 const getAllCourses = async (req, res) => {
     try {
         const [rows] = await db.query(`
-            SELECT co.*, i.name AS instrument_name, i.icon AS instrument_icon,
-                ct.type_name, ct.total_sessions, ct.students_per_class,
-                COUNT(DISTINCT cl.class_id) AS total_classes
+            SELECT co.*, COUNT(DISTINCT cl.class_id) AS total_classes
             FROM courses co
-            LEFT JOIN instruments i  ON co.instrument_id = i.instrument_id
-            LEFT JOIN course_types ct ON co.type_id = ct.type_id
             LEFT JOIN classes cl ON co.course_id = cl.course_id
             WHERE co.is_active = 1
-            GROUP BY co.course_id
-            ORDER BY co.instrument_id, co.type_id`);
+            GROUP BY co.course_id ORDER BY co.created_at DESC`);
         res.json(rows);
     } catch(e) { res.status(500).json({ message: 'Lỗi server!', error: e.message }); }
 };
 
 const createCourse = async (req, res) => {
     try {
-        const { course_name, instrument_id, type_id, level, description, tuition_fee } = req.body;
+        const { course_name, level, description, tuition_fee, duration_months, sessions_total } = req.body;
         if (!course_name || !tuition_fee) return res.status(400).json({ message: 'Thiếu thông tin!' });
         const [r] = await db.query(
-            `INSERT INTO courses (course_name, instrument_id, type_id, level, description, tuition_fee)
+            `INSERT INTO courses (course_name,level,description,tuition_fee,duration_months,sessions_total)
              VALUES (?,?,?,?,?,?)`,
-            [course_name, instrument_id||null, type_id||null, level||'beginner', description||null, tuition_fee]
+            [course_name, level||'beginner', description||null, tuition_fee, duration_months||3, sessions_total||0]
         );
         res.status(201).json({ message: 'Thêm khóa học thành công!', course_id: r.insertId });
     } catch(e) { res.status(500).json({ message: 'Lỗi server!', error: e.message }); }
@@ -48,7 +41,7 @@ const createCourse = async (req, res) => {
 
 const updateCourse = async (req, res) => {
     try {
-        const fields = ['course_name','instrument_id','type_id','level','description','tuition_fee','is_active'];
+        const fields = ['course_name','level','description','tuition_fee','duration_months','sessions_total','is_active'];
         const sets = [], vals = [];
         fields.forEach(f => { if (req.body[f] !== undefined) { sets.push(`${f}=?`); vals.push(req.body[f]); } });
         vals.push(req.params.id);
@@ -66,31 +59,23 @@ const deleteCourse = async (req, res) => {
     } catch(e) { res.status(500).json({ message: 'Lỗi server!', error: e.message }); }
 };
 
-// =============================================
-// CLASSES
-// =============================================
 const getAllClasses = async (req, res) => {
     try {
-        const { status, teacher_id, course_id, instrument_id } = req.query;
+        const { status, teacher_id, course_id } = req.query;
         let sql = `
-            SELECT cl.*, co.course_name, co.tuition_fee,
-                ct.type_name, ct.total_sessions, ct.students_per_class,
+            SELECT cl.*, co.course_name, co.tuition_fee, co.sessions_total,
                 t.full_name AS teacher_name, t.phone AS teacher_phone,
-                i.name AS instrument_name, i.icon AS instrument_icon,
                 COUNT(DISTINCT e.enrollment_id) AS student_count,
                 cl.max_students - COUNT(DISTINCT e.enrollment_id) AS available_slots
             FROM classes cl
             JOIN courses co ON cl.course_id = co.course_id
-            LEFT JOIN course_types ct ON co.type_id = ct.type_id
             JOIN teachers t ON cl.teacher_id = t.teacher_id
-            LEFT JOIN instruments i ON cl.instrument_id = i.instrument_id
             LEFT JOIN enrollments e ON cl.class_id = e.class_id AND e.status='active'
             WHERE 1=1`;
         const params = [];
-        if (status)        { sql += ' AND cl.status=?';        params.push(status); }
-        if (teacher_id)    { sql += ' AND cl.teacher_id=?';    params.push(teacher_id); }
-        if (course_id)     { sql += ' AND cl.course_id=?';     params.push(course_id); }
-        if (instrument_id) { sql += ' AND cl.instrument_id=?'; params.push(instrument_id); }
+        if (status)     { sql += ' AND cl.status=?';     params.push(status); }
+        if (teacher_id) { sql += ' AND cl.teacher_id=?'; params.push(teacher_id); }
+        if (course_id)  { sql += ' AND cl.course_id=?';  params.push(course_id); }
         sql += ' GROUP BY cl.class_id ORDER BY cl.start_date DESC';
         const [rows] = await db.query(sql, params);
         res.json(rows);
@@ -101,24 +86,20 @@ const getClassDetail = async (req, res) => {
     try {
         const [[cls]] = await db.query(`
             SELECT cl.*, co.course_name, co.tuition_fee, co.sessions_total,
-                ct.type_name, ct.total_sessions, ct.students_per_class,
-                t.full_name AS teacher_name, t.phone AS teacher_phone,
-                i.name AS instrument_name, i.icon AS instrument_icon
+                t.full_name AS teacher_name, t.phone AS teacher_phone
             FROM classes cl
             JOIN courses co ON cl.course_id = co.course_id
-            LEFT JOIN course_types ct ON co.type_id = ct.type_id
             JOIN teachers t ON cl.teacher_id = t.teacher_id
-            LEFT JOIN instruments i ON cl.instrument_id = i.instrument_id
             WHERE cl.class_id=?`, [req.params.id]);
         if (!cls) return res.status(404).json({ message: 'Không tìm thấy lớp học!' });
 
         const [students] = await db.query(`
             SELECT s.student_id, s.full_name, s.phone, s.parent_phone,
-                e.enrollment_id, e.status AS enroll_status, e.final_amount,
+                e.enrollment_id, e.status AS enroll_status,
                 COALESCE(SUM(tp.amount),0) AS paid_amount
             FROM enrollments e
             JOIN students s ON e.student_id = s.student_id
-            LEFT JOIN tuition_payments tp ON e.enrollment_id = tp.enrollment_id
+            LEFT JOIN tuition_payments tp ON tp.student_id=e.student_id AND tp.class_id=e.class_id
             WHERE e.class_id=? GROUP BY e.enrollment_id`, [req.params.id]);
 
         const [sessions] = await db.query(
@@ -130,14 +111,13 @@ const getClassDetail = async (req, res) => {
 
 const createClass = async (req, res) => {
     try {
-        const { class_name, course_id, teacher_id, instrument_id, max_students, room, schedule_days, schedule_time, start_date, end_date } = req.body;
+        const { class_name, course_id, teacher_id, max_students, room, schedule_days, schedule_time, start_date, end_date } = req.body;
         if (!class_name || !course_id || !teacher_id || !start_date)
             return res.status(400).json({ message: 'Thiếu thông tin!' });
         const [r] = await db.query(
-            `INSERT INTO classes (class_name,course_id,teacher_id,instrument_id,max_students,room,schedule_days,schedule_time,start_date,end_date)
-             VALUES (?,?,?,?,?,?,?,?,?,?)`,
-            [class_name, course_id, teacher_id, instrument_id||null, max_students||3,
-             room||null, schedule_days||null, schedule_time||null, start_date, end_date||null]
+            `INSERT INTO classes (class_name,course_id,teacher_id,max_students,room,schedule_days,schedule_time,start_date,end_date)
+             VALUES (?,?,?,?,?,?,?,?,?)`,
+            [class_name, course_id, teacher_id, max_students||3, room||null, schedule_days||null, schedule_time||null, start_date, end_date||null]
         );
         res.status(201).json({ message: 'Tạo lớp học thành công!', class_id: r.insertId });
     } catch(e) { res.status(500).json({ message: 'Lỗi server!', error: e.message }); }
@@ -145,7 +125,7 @@ const createClass = async (req, res) => {
 
 const updateClass = async (req, res) => {
     try {
-        const fields = ['class_name','course_id','teacher_id','instrument_id','max_students','room','schedule_days','schedule_time','start_date','end_date','status'];
+        const fields = ['class_name','course_id','teacher_id','max_students','room','schedule_days','schedule_time','start_date','end_date','status'];
         const sets = [], vals = [];
         fields.forEach(f => { if (req.body[f] !== undefined) { sets.push(`${f}=?`); vals.push(req.body[f]); } });
         vals.push(req.params.id);
@@ -154,26 +134,20 @@ const updateClass = async (req, res) => {
     } catch(e) { res.status(500).json({ message: 'Lỗi server!', error: e.message }); }
 };
 
-// =============================================
-// ENROLLMENTS
-// =============================================
 const enrollStudent = async (req, res) => {
     try {
-        const { student_id, class_id, discount_amount, note } = req.body;
+        const { student_id, class_id } = req.body;
         if (!student_id || !class_id) return res.status(400).json({ message: 'Thiếu thông tin!' });
         const [[cls]] = await db.query(`
-            SELECT cl.max_students, co.tuition_fee,
-                COUNT(e.enrollment_id) AS current_count
-            FROM classes cl JOIN courses co ON cl.course_id=co.course_id
+            SELECT cl.max_students, COUNT(e.enrollment_id) AS current_count
+            FROM classes cl
             LEFT JOIN enrollments e ON cl.class_id=e.class_id AND e.status='active'
             WHERE cl.class_id=? GROUP BY cl.class_id`, [class_id]);
         if (!cls) return res.status(404).json({ message: 'Không tìm thấy lớp!' });
         if (cls.current_count >= cls.max_students) return res.status(400).json({ message: 'Lớp đã đầy!' });
-        const discount = parseFloat(discount_amount) || 0;
         const [r] = await db.query(
-            `INSERT INTO enrollments (student_id,class_id,tuition_total,discount_amount,final_amount,note)
-             VALUES (?,?,?,?,?,?)`,
-            [student_id, class_id, cls.tuition_fee, discount, cls.tuition_fee - discount, note||null]
+            `INSERT INTO enrollments (student_id,class_id) VALUES (?,?)`,
+            [student_id, class_id]
         );
         res.status(201).json({ message: 'Đăng ký học thành công!', enrollment_id: r.insertId });
     } catch(e) {
@@ -184,26 +158,20 @@ const enrollStudent = async (req, res) => {
 
 const updateEnrollment = async (req, res) => {
     try {
-        const { status, note } = req.body;
-        await db.query('UPDATE enrollments SET status=?, note=? WHERE enrollment_id=?',
-            [status, note||null, req.params.id]);
+        const { status } = req.body;
+        await db.query('UPDATE enrollments SET status=? WHERE enrollment_id=?', [status, req.params.id]);
         res.json({ message: 'Cập nhật đăng ký thành công!' });
     } catch(e) { res.status(500).json({ message: 'Lỗi server!', error: e.message }); }
 };
 
-// =============================================
-// TUITION PAYMENTS
-// =============================================
 const addPayment = async (req, res) => {
     try {
-        const { enrollment_id, amount, payment_date, payment_method, note } = req.body;
-        if (!enrollment_id || !amount) return res.status(400).json({ message: 'Thiếu thông tin!' });
+        const { student_id, class_id, amount, due_date, note } = req.body;
+        if (!student_id || !class_id || !amount) return res.status(400).json({ message: 'Thiếu thông tin!' });
         await db.query(
-            `INSERT INTO tuition_payments (enrollment_id,amount,payment_date,payment_method,note,created_by)
-             VALUES (?,?,?,?,?,?)`,
-            [enrollment_id, amount,
-             payment_date || new Date().toISOString().split('T')[0],
-             payment_method||'cash', note||null, req.user.user_id]
+            `INSERT INTO tuition_payments (student_id,class_id,amount,paid_at,due_date,status,note)
+             VALUES (?,?,?,NOW(),?,'paid',?)`,
+            [student_id, class_id, amount, due_date||null, note||null]
         );
         res.status(201).json({ message: 'Ghi nhận học phí thành công!' });
     } catch(e) { res.status(500).json({ message: 'Lỗi server!', error: e.message }); }
@@ -211,28 +179,23 @@ const addPayment = async (req, res) => {
 
 const getPaymentsByEnrollment = async (req, res) => {
     try {
+        const [[enrollment]] = await db.query(
+            'SELECT student_id, class_id FROM enrollments WHERE enrollment_id=?', [req.params.enrollment_id]);
+        if (!enrollment) return res.status(404).json({ message: 'Không tìm thấy đăng ký!' });
         const [rows] = await db.query(
-            `SELECT tp.*, u.full_name AS created_by_name
-             FROM tuition_payments tp
-             LEFT JOIN users u ON tp.created_by=u.user_id
-             WHERE tp.enrollment_id=? ORDER BY tp.payment_date DESC`,
-            [req.params.enrollment_id]);
+            `SELECT * FROM tuition_payments WHERE student_id=? AND class_id=? ORDER BY paid_at DESC`,
+            [enrollment.student_id, enrollment.class_id]);
         res.json(rows);
     } catch(e) { res.status(500).json({ message: 'Lỗi server!', error: e.message }); }
 };
 
-// =============================================
-// SESSIONS & ATTENDANCE
-// =============================================
 const createSession = async (req, res) => {
     try {
-        const { class_id, session_date, start_time, end_time, topic } = req.body;
-        if (!class_id || !session_date || !start_time || !end_time)
-            return res.status(400).json({ message: 'Thiếu thông tin!' });
+        const { class_id, session_date, slot_id, topic } = req.body;
+        if (!class_id || !session_date) return res.status(400).json({ message: 'Thiếu thông tin!' });
         const [r] = await db.query(
-            `INSERT INTO class_sessions (class_id,session_date,start_time,end_time,topic)
-             VALUES (?,?,?,?,?)`,
-            [class_id, session_date, start_time, end_time, topic||null]
+            `INSERT INTO class_sessions (class_id,session_date,slot_id,topic) VALUES (?,?,?,?)`,
+            [class_id, session_date, slot_id||null, topic||null]
         );
         res.status(201).json({ message: 'Tạo buổi học thành công!', session_id: r.insertId });
     } catch(e) { res.status(500).json({ message: 'Lỗi server!', error: e.message }); }
@@ -243,7 +206,6 @@ const saveAttendance = async (req, res) => {
         const { session_id, records } = req.body;
         if (!session_id || !Array.isArray(records))
             return res.status(400).json({ message: 'Dữ liệu không hợp lệ!' });
-        await db.query('UPDATE class_sessions SET status="done" WHERE session_id=?', [session_id]);
         for (const r of records) {
             await db.query(
                 `INSERT INTO attendance (session_id,student_id,status,note) VALUES (?,?,?,?)
@@ -268,7 +230,7 @@ const getAttendanceBySession = async (req, res) => {
 const getAttendanceByStudent = async (req, res) => {
     try {
         const [rows] = await db.query(
-            `SELECT a.*, cs.session_date, cs.start_time, cs.end_time, cs.topic, cl.class_name
+            `SELECT a.*, cs.session_date, cs.topic, cl.class_name
              FROM attendance a
              JOIN class_sessions cs ON a.session_id=cs.session_id
              JOIN classes cl ON cs.class_id=cl.class_id
@@ -277,9 +239,6 @@ const getAttendanceByStudent = async (req, res) => {
     } catch(e) { res.status(500).json({ message: 'Lỗi server!', error: e.message }); }
 };
 
-// =============================================
-// ADMIN PERMISSIONS
-// =============================================
 const getAdmins = async (req, res) => {
     try {
         const [rows] = await db.query(`
