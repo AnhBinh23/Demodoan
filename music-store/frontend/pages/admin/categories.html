@@ -76,7 +76,7 @@
 
   async function loadCategories() {
     try {
-      allCategories = await Categories.getAll();
+      allCategories = await api.get('/categories?t=' + Date.now());
       const grid = document.getElementById('catGrid');
       if (!allCategories.length) {
         grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">📂</div><p>Chưa có danh mục</p></div>';
