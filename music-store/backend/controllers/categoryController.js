@@ -35,17 +35,19 @@ const updateCategory = async (req, res) => {
     try {
         const { id } = req.params;
         const { category_name, description } = req.body;
-
+        
+        console.log('req.file:', req.file); // DEBUG
+        
         const sets   = ['category_name=?', 'description=?'];
         const params = [category_name, description || null];
-
         if (req.file) {
-    image_url = req.file.path || req.file.secure_url;
-}
-
+            sets.push('image_url=?');
+            params.push(req.file.path || req.file.secure_url);
+            console.log('image_url saved:', req.file.path); // DEBUG
+        }
         params.push(id);
         await db.query(`UPDATE categories SET ${sets.join(',')} WHERE category_id=?`, params);
-        res.json({ message: 'Cập nhật danh mục thành công!' });
+        res.json({ message: 'Cập nhật danh mục thành công!', image_url: req.file?.path });
     } catch(err) { res.status(500).json({ message: 'Lỗi server!', error: err.message }); }
 };
 
